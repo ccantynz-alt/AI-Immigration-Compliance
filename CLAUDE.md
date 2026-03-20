@@ -128,26 +128,87 @@ Verom.ai is an **AI-powered immigration platform** that dramatically reduces att
 
 #### Attorney Portal — Phase A: Workload Automation Tools (BUILD FIRST)
 These are the tools that get attorneys to sign up. They save time on *existing* caseload.
+The pitch: "9 hours/week of manual admin work eliminated. $230K/year in recovered billable time."
+
+**Onboarding & Profile**
 - [ ] Attorney profile creation (jurisdiction, specializations, capacity)
 - [ ] Verification system (bar number, credentials)
-- [ ] **AI-powered client intake** — applicants arrive pre-screened, documents collected and validated
-- [ ] Case management tools (documents, notes, status updates)
+- [ ] Import existing caseload — bulk CSV/Excel upload of current cases and clients
+
+**Client Intake Automation** (biggest pain point — firms spend days on intake)
+- [ ] **AI-powered client intake** — dynamic questionnaires that adapt by visa type and status
+- [ ] **Multi-language intake forms** — clients fill out in their language, attorney sees English
+- [ ] **Document collection portal** — clients upload docs via secure link, AI validates completeness
+- [ ] **AI document scanning & OCR** — scan physical documents, passports, I-94s, approval notices
+- [ ] **Photo/document quality checker** — rejects blurry scans, wrong formats before submission
+- [ ] **Smart form auto-population** — intake answers pre-fill USCIS/government forms automatically
+- [ ] **Intake-to-case pipeline** — completed intake flows directly into case file, zero re-entry
+
+**Case Management**
+- [ ] Case dashboard — all cases, statuses, next actions in one view
+- [ ] Document management (organize, tag, version control per case)
+- [ ] Case notes and internal memos
+- [ ] Case timeline/history view
+- [ ] **RFE tracking and response tools** — track RFE deadlines, draft responses with AI assistance
+- [ ] **Form auto-fill engine** — enter client data once, populate across all required forms (I-130, I-485, I-765, I-131, etc.)
+- [ ] **350+ government forms library** — always-updated, pre-formatted immigration forms
+- [ ] **Batch form generation** — family-based cases generate all related forms at once
+
+**Deadline & Calendar Management**
 - [ ] **Automated deadline tracking** — every filing window, renewal, RFE deadline tracked automatically
+- [ ] **Smart calendar integration** — sync to Google Calendar, Outlook, Apple Calendar
+- [ ] **Deadline calculation engine** — auto-calculates deadlines from receipt dates, priority dates, filing requirements
+- [ ] **Team-wide deadline visibility** — paralegals, associates, and partners see all deadlines
+- [ ] **Escalation alerts** — deadlines approaching without action trigger escalating notifications
+
+**Client Communication Automation**
 - [ ] **Automated client status updates** — clients get progress notifications without attorney effort
-- [ ] **Government agency direct feeds and integrations:**
-  - [ ] USCIS case status API — real-time petition status updates
-  - [ ] USCIS processing times feed — auto-updated processing windows
-  - [ ] Visa Bulletin feed — priority date tracking (EB, FB categories)
-  - [ ] SEVIS integration — student visa status verification
-  - [ ] DOL PERM/LCA case status — labor certification tracking
-  - [ ] UK Home Office status tracking
-  - [ ] IRCC (Canada) application status feed
-  - [ ] DHA (Australia) VEVO integration
-  - [ ] Policy change alerts — automated monitoring of Federal Register, USCIS announcements
-  - [ ] Court decision feed — relevant immigration law updates
-  - [ ] Filing fee calculator — auto-updated from agency fee schedules
-- [ ] Success analytics (approval rates, processing times)
-- [ ] Calendar integration
+- [ ] **Secure client portal** — clients check their own case status, upload docs, see next steps
+- [ ] **Automated email/SMS sequences** — document reminders, appointment confirmations, status changes
+- [ ] **AI-translated client messages** — attorney writes in English, client reads in their language (with disclaimer)
+
+**Government Portal Unification** (attorneys currently log into 5+ separate portals daily)
+- [ ] **Single-dashboard government status** — USCIS, DOL, EOIR, SEVIS status in one place
+- [ ] USCIS case status API — real-time petition status updates
+- [ ] USCIS processing times feed — auto-updated processing windows
+- [ ] Visa Bulletin feed — priority date tracking (EB, FB categories)
+- [ ] SEVIS integration — student visa status verification
+- [ ] DOL PERM/LCA case status — labor certification tracking
+- [ ] EOIR/Immigration Court case tracking
+- [ ] UK Home Office status tracking
+- [ ] IRCC (Canada) application status feed
+- [ ] DHA (Australia) VEVO integration
+- [ ] Policy change alerts — automated monitoring of Federal Register, USCIS announcements
+- [ ] Court decision feed — relevant immigration law updates
+- [ ] Filing fee calculator — auto-updated from agency fee schedules
+- [ ] **Attorney gets notified BEFORE the client** — solve the #1 USCIS portal complaint
+
+**Integrations & Data Import/Export**
+- [ ] **Excel/CSV import & export** — case lists, client data, deadline reports
+- [ ] **Google Sheets integration** — live sync for firms that track in spreadsheets
+- [ ] **Microsoft Office integration** — Word templates for cover letters, briefs, memos
+- [ ] **Google Workspace integration** — Docs, Drive, Gmail
+- [ ] **Outlook/Gmail email integration** — file emails to cases automatically
+- [ ] **Cloud storage sync** — Dropbox, Google Drive, OneDrive, Box
+- [ ] **E-signature integration** — DocuSign, Adobe Sign for G-28, retainer agreements
+- [ ] **Accounting/billing integration** — QuickBooks, Xero, FreshBooks
+- [ ] **Calendar sync** — Google Calendar, Outlook, iCal
+- [ ] **Zapier/Make integration** — connect to 5000+ apps for custom workflows
+- [ ] **API access** — firms with custom tools can integrate programmatically
+
+**Analytics & Reporting**
+- [ ] Success analytics (approval rates, processing times by case type)
+- [ ] Caseload reports — volume, status breakdown, bottlenecks
+- [ ] Revenue/billing reports
+- [ ] Staff productivity metrics
+- [ ] **Exportable reports** — PDF, Excel, CSV for partners and clients
+
+**Physical Document Handling** (yes, paper is still very much alive)
+- [ ] **Mobile scan-to-case** — photograph documents with phone, AI files them to correct case
+- [ ] **USCIS notice scanner** — scan physical USCIS mail, auto-extract receipt numbers, dates, case types
+- [ ] **Passport/ID scanner** — OCR extraction of biographical data from travel documents
+- [ ] **Fax-to-digital pipeline** — receive faxes digitally, auto-file to cases (many courts still fax)
+- [ ] **Physical mail tracking** — log expected USCIS mail, flag when 30-day delivery window passes
 
 #### Attorney Portal — Phase B: Marketplace Layer (AFTER ADOPTION)
 These features activate once attorneys trust the platform and opt in.
@@ -156,6 +217,7 @@ These features activate once attorneys trust the platform and opt in.
 - [ ] Attorneys set their own fees (platform does NOT dictate pricing)
 - [ ] Secure messaging with applicants
 - [ ] Earnings dashboard
+- [ ] Client reviews and ratings (verified outcomes only)
 
 #### Employer Compliance Dashboard (existing)
 - [x] Employee management with visa tracking
