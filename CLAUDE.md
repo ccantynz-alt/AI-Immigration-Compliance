@@ -50,11 +50,19 @@ api/                 # Vercel serverless functions
 ## Product Roadmap & Checklist
 
 ### Platform Vision
-Verom.ai is a **global immigration marketplace** connecting applicants (students, workers, families) with licensed immigration attorneys, powered by AI compliance tools. It also provides employer-facing immigration compliance management.
+Verom.ai is an **AI-powered immigration platform** that dramatically reduces attorney workload through automation — intake, document validation, status tracking, deadline management, and client communication. By making attorneys' lives easier first, we build trust and adoption, then layer on a marketplace connecting pre-screened applicants with attorneys who have capacity. It also provides employer-facing immigration compliance management.
+
+### Go-To-Market Strategy
+**Lead with tools, layer on the marketplace.**
+- **Phase A — Attorney adoption:** Free/low-cost tools that save attorneys hours per week on existing caseload. The pitch: *"We're not adding to your pile — we're shrinking it."*
+- **Phase B — Marketplace activation:** Once attorneys trust the platform, introduce opt-in pre-screened case matching with capacity controls ("I can take 3 new cases this month").
+- **Phase C — Full ecosystem:** Applicants, attorneys, and employers all on one platform with AI powering every workflow.
+
+**Marketing message:** Verom automates the 80% of immigration casework that isn't legal judgment — so attorneys can focus on the 20% that is.
 
 ### Target User Types
 - [ ] **Applicants** — Students, workers, spouses/families, investors seeking visas
-- [ ] **Attorneys** — Licensed immigration lawyers seeking qualified client leads
+- [ ] **Attorneys** — Licensed immigration lawyers who need workload automation (PRIMARY adoption target)
 - [x] **Employers** — Companies managing workforce immigration compliance (current dashboard)
 
 ### Visa Categories to Support
@@ -118,16 +126,14 @@ Verom.ai is a **global immigration marketplace** connecting applicants (students
 - [ ] Multi-language applicant UI (labels, tooltips, instructions)
 - [ ] All legal documents and case content remain in English
 
-#### Attorney Portal
+#### Attorney Portal — Phase A: Workload Automation Tools (BUILD FIRST)
+These are the tools that get attorneys to sign up. They save time on *existing* caseload.
 - [ ] Attorney profile creation (jurisdiction, specializations, capacity)
 - [ ] Verification system (bar number, credentials)
-- [ ] Client pipeline dashboard — browse and accept cases
+- [ ] **AI-powered client intake** — applicants arrive pre-screened, documents collected and validated
 - [ ] Case management tools (documents, notes, status updates)
-- [ ] Secure messaging with applicants
-- [ ] Earnings dashboard
-- [ ] Success analytics (approval rates, processing times)
-- [ ] Deadline alerts and calendar integration
-- [ ] Attorneys set their own fees (platform does NOT dictate pricing)
+- [ ] **Automated deadline tracking** — every filing window, renewal, RFE deadline tracked automatically
+- [ ] **Automated client status updates** — clients get progress notifications without attorney effort
 - [ ] **Government agency direct feeds and integrations:**
   - [ ] USCIS case status API — real-time petition status updates
   - [ ] USCIS processing times feed — auto-updated processing windows
@@ -140,6 +146,16 @@ Verom.ai is a **global immigration marketplace** connecting applicants (students
   - [ ] Policy change alerts — automated monitoring of Federal Register, USCIS announcements
   - [ ] Court decision feed — relevant immigration law updates
   - [ ] Filing fee calculator — auto-updated from agency fee schedules
+- [ ] Success analytics (approval rates, processing times)
+- [ ] Calendar integration
+
+#### Attorney Portal — Phase B: Marketplace Layer (AFTER ADOPTION)
+These features activate once attorneys trust the platform and opt in.
+- [ ] Client pipeline dashboard — browse and accept pre-screened cases
+- [ ] Capacity controls — attorneys set how many new cases they can take
+- [ ] Attorneys set their own fees (platform does NOT dictate pricing)
+- [ ] Secure messaging with applicants
+- [ ] Earnings dashboard
 
 #### Employer Compliance Dashboard (existing)
 - [x] Employee management with visa tracking
