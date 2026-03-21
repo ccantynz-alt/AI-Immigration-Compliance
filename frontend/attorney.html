@@ -251,6 +251,7 @@
     </style>
 </head>
 <body>
+<script src="/static/js/auth.js"></script>
 
 <!-- Navigation -->
 <nav class="app-nav">
@@ -268,7 +269,8 @@
             <button class="nav-tab" data-tab="profile">Profile</button>
         </div>
         <div class="nav-right">
-            <div class="avatar">SK</div>
+            <div class="avatar" id="userAvatar">SK</div>
+            <button onclick="veromAuth.logout()" style="background:none;border:1px solid var(--slate-300);border-radius:8px;padding:6px 14px;font-size:13px;font-weight:500;color:var(--slate-600);cursor:pointer;">Log out</button>
         </div>
         <button class="mobile-toggle" id="mobileToggle" aria-label="Menu">
             <span></span><span></span><span></span>
