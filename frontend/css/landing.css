@@ -501,4 +501,198 @@ body {
     .hero h1 { font-size: 28px; }
     .section-header h2, .problem-text h2, .final-cta h2 { font-size: 28px; }
     .visa-types { grid-template-columns: 1fr 1fr; }
+    .diff-grid { grid-template-columns: 1fr; }
+    .roi-grid { grid-template-columns: 1fr; }
+    .trust-grid { grid-template-columns: 1fr; }
+}
+
+/* ============================================
+   Why Verom — Competitive Differentiation
+   ============================================ */
+.section-badge {
+    display: inline-block; padding: 6px 18px; border-radius: 50px;
+    background: var(--blue-50); color: var(--blue-600); font-size: 13px;
+    font-weight: 700; letter-spacing: 0.04em; margin-bottom: 16px;
+    text-transform: uppercase;
+}
+.why-verom {
+    padding: 100px 0;
+    background: linear-gradient(180deg, #fff 0%, var(--slate-50) 100%);
+}
+.diff-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;
+    margin-bottom: 64px;
+}
+.diff-card {
+    padding: 32px 28px; border-radius: var(--radius-lg);
+    background: #fff; border: 1px solid var(--slate-200);
+    transition: all 0.3s; position: relative;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+.diff-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.08);
+}
+.diff-card--primary {
+    border-color: var(--blue-200);
+    background: linear-gradient(135deg, var(--blue-50) 0%, #fff 100%);
+}
+.diff-card--primary:hover {
+    border-color: var(--blue-400);
+    box-shadow: 0 12px 40px rgba(59,130,246,0.15);
+}
+.diff-icon {
+    width: 56px; height: 56px; border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--blue-50); color: var(--blue-600);
+    margin-bottom: 16px;
+}
+.diff-card--primary .diff-icon {
+    background: var(--blue-600); color: #fff;
+}
+.diff-card h4 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+.diff-card p { font-size: 14px; color: var(--slate-500); line-height: 1.6; }
+.diff-tag {
+    display: inline-block; margin-top: 12px; padding: 4px 12px;
+    border-radius: 50px; background: linear-gradient(135deg, var(--blue-600), var(--blue-700));
+    color: #fff; font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+/* Comparison Table */
+.compare-table-wrap {
+    background: #fff; border-radius: var(--radius-lg);
+    padding: 40px; border: 1px solid var(--slate-200);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+}
+.compare-title {
+    font-size: 24px; font-weight: 800; text-align: center;
+    margin-bottom: 28px; letter-spacing: -0.02em;
+}
+.compare-scroll { overflow-x: auto; }
+.compare-table {
+    width: 100%; border-collapse: collapse; font-size: 14px;
+    min-width: 700px;
+}
+.compare-table th {
+    padding: 14px 16px; text-align: center; font-weight: 700;
+    font-size: 13px; color: var(--slate-500); border-bottom: 2px solid var(--slate-200);
+    white-space: nowrap;
+}
+.compare-table th.compare-verom {
+    color: var(--blue-600); font-size: 15px; font-weight: 800;
+}
+.compare-table td {
+    padding: 14px 16px; text-align: center;
+    border-bottom: 1px solid var(--slate-100);
+}
+.compare-table td:first-child {
+    text-align: left; font-weight: 600; color: var(--slate-700);
+}
+.compare-table td.compare-verom {
+    background: var(--blue-50);
+}
+.compare-table tbody tr:hover { background: var(--slate-50); }
+.compare-table tbody tr:hover td.compare-verom { background: var(--blue-100); }
+.check-yes {
+    color: var(--green-500); font-weight: 800; font-size: 18px;
+}
+.check-no { color: var(--slate-300); font-size: 16px; }
+.check-partial {
+    color: var(--amber-500); font-weight: 600; font-size: 12px;
+}
+
+/* ============================================
+   Attorney ROI Section
+   ============================================ */
+.attorney-roi {
+    padding: 100px 0;
+    background: var(--slate-900); color: #fff;
+    position: relative; overflow: hidden;
+}
+.attorney-roi::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 20% 50%, rgba(59,130,246,0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 50%, rgba(56,189,248,0.06) 0%, transparent 50%);
+}
+.roi-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 64px;
+    align-items: start; position: relative;
+}
+.roi-content .section-badge {
+    background: rgba(59,130,246,0.15); color: #93c5fd;
+}
+.roi-content h2 {
+    font-size: 40px; font-weight: 800; line-height: 1.15;
+    margin-bottom: 20px; letter-spacing: -0.02em;
+}
+.roi-content > p {
+    font-size: 17px; color: rgba(255,255,255,0.65); line-height: 1.7;
+    margin-bottom: 36px;
+}
+.roi-stats {
+    display: flex; gap: 32px; margin-bottom: 36px;
+    padding: 24px 0; border-top: 1px solid rgba(255,255,255,0.1);
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+.roi-stat { text-align: center; flex: 1; }
+.roi-num {
+    display: block; font-size: 32px; font-weight: 800;
+    background: linear-gradient(135deg, #60a5fa, #38bdf8);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+.roi-label { font-size: 13px; color: rgba(255,255,255,0.5); margin-top: 4px; display: block; }
+.roi-features { display: flex; flex-direction: column; gap: 20px; }
+.roi-feature {
+    display: flex; gap: 16px; padding: 20px; border-radius: var(--radius);
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+    transition: all 0.25s;
+}
+.roi-feature:hover {
+    background: rgba(255,255,255,0.08);
+    border-color: rgba(59,130,246,0.3);
+    transform: translateX(4px);
+}
+.roi-feature svg {
+    flex-shrink: 0; color: #60a5fa; margin-top: 2px;
+}
+.roi-feature h4 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+.roi-feature p { font-size: 13px; color: rgba(255,255,255,0.55); line-height: 1.5; }
+
+/* ============================================
+   Trust & Security Section
+   ============================================ */
+.trust-section {
+    padding: 100px 0;
+    background: linear-gradient(180deg, var(--slate-50) 0%, #fff 100%);
+}
+.trust-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;
+}
+.trust-card {
+    padding: 32px 28px; border-radius: var(--radius-lg);
+    background: #fff; border: 1px solid var(--slate-200);
+    text-align: center; transition: all 0.3s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+.trust-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.06);
+    border-color: var(--blue-200);
+}
+.trust-card svg {
+    color: var(--blue-600); margin-bottom: 16px;
+}
+.trust-card h4 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+.trust-card p { font-size: 14px; color: var(--slate-500); line-height: 1.6; }
+
+/* ---- Responsive: new sections ---- */
+@media (max-width: 768px) {
+    .diff-grid { grid-template-columns: 1fr; }
+    .roi-grid { grid-template-columns: 1fr; gap: 40px; }
+    .roi-content h2 { font-size: 32px; }
+    .roi-stats { flex-direction: column; gap: 20px; }
+    .trust-grid { grid-template-columns: 1fr; max-width: 480px; margin: 0 auto; }
+    .compare-table-wrap { padding: 24px 16px; }
 }
