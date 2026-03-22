@@ -36,6 +36,18 @@ from immigration_compliance.models.case import Case, CaseStatus
 from immigration_compliance.models.compliance import ComplianceReport, RuleViolation
 from immigration_compliance.models.document import Document, DocumentCategory
 from immigration_compliance.models.employee import Employee
+from immigration_compliance.models.consultation import (
+    Consultation,
+    ConsultationRequest,
+    ConsultationStatus,
+    ExpirationAlert,
+    InterviewType,
+    MockInterviewSession,
+    ReceiptTracker,
+    TravelAdvisory,
+    TravelAdvisoryRequest,
+    VaultDocument,
+)
 from immigration_compliance.models.global_immigration import GlobalAssignment, TravelEntry
 from immigration_compliance.models.hris import HRISIntegration, HRISProvider, IntegrationStatus, SyncRecord
 from immigration_compliance.models.paf import PAFDocumentType, PublicAccessFile
@@ -48,6 +60,8 @@ from immigration_compliance.models.regulatory import (
 from immigration_compliance.services.audit_service import AuditTrailService, ICEAuditSimulator
 from immigration_compliance.services.auth_service import AuthService
 from immigration_compliance.services.billing_service import BillingService
+from immigration_compliance.services.consultation_service import ConsultationService
+from immigration_compliance.services.vault_service import TravelAdvisoryService, VaultService
 from immigration_compliance.services.compliance_service import ComplianceService
 from immigration_compliance.services.document_service import DocumentService
 from immigration_compliance.services.global_service import GlobalImmigrationService
@@ -72,6 +86,9 @@ if _frontend_dir.exists():
 # Service instances
 auth_service = AuthService()
 billing_service = BillingService()
+consultation_service = ConsultationService()
+vault_service = VaultService()
+travel_advisor = TravelAdvisoryService()
 service = ComplianceService()
 _cases: dict[str, Case] = {}
 doc_service = DocumentService()
@@ -352,6 +369,200 @@ def create_payment_intent(
         attorney_user_id=req.attorney_user_id,
         case_id=req.case_id,
         description=req.description,
+    )
+
+
+# =============================================
+# Video Consultation endpoints
+# =============================================
+
+@app.post("/api/consultations", response_model=Consultation, status_code=201)
+def request_consultation(
+    req: ConsultationRequest,
+    user: UserOut = Depends(get_current_user),
+) -> Consultation:
+    return consultation_service.request_consultation(
+        applicant_id=user.id,
+        attorney_id=req.attorney_id,
+        consultation_type=req.consultation_type,
+        preferred_date=req.preferred_date,
+        preferred_time=req.preferred_time,
+        duration=req.duration_minutes,
+        notes=req.notes,
+        case_id=req.case_id,
+    )
+
+
+@app.get("/api/consultations", response_model=list[Consultation])
+def list_consultations(user: UserOut = Depends(get_current_user)) -> list[Consultation]:
+    role = "attorney" if user.role == UserRole.ATTORNEY else "applicant"
+    return consultation_service.list_consultations(user.id, role)
+
+
+@app.get("/api/consultations/{consultation_id}", response_model=Consultation)
+def get_consultation_detail(
+    consultation_id: str,
+    user: UserOut = Depends(get_current_user),
+) -> Consultation:
+    c = consultation_service.get_consultation(consultation_id)
+    if c is None:
+        raise HTTPException(status_code=404, detail="Consultation not found")
+    if c.applicant_id != user.id and c.attorney_id != user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    return c
+
+
+@app.patch("/api/consultations/{consultation_id}/status", response_model=Consultation)
+def update_consultation_status(
+    consultation_id: str,
+    status: ConsultationStatus,
+    user: UserOut = Depends(get_current_user),
+) -> Consultation:
+    c = consultation_service.update_status(consultation_id, status)
+    if c is None:
+        raise HTTPException(status_code=404, detail="Consultation not found")
+    return c
+
+
+@app.get("/api/consultations/slots/{attorney_id}")
+def get_attorney_slots(attorney_id: str, date: str = ""):
+    return consultation_service.get_available_slots(attorney_id, date)
+
+
+# =============================================
+# Interview Prep endpoints
+# =============================================
+
+@app.get("/api/interview-prep/types")
+def get_interview_types():
+    return ConsultationService.get_interview_types()
+
+
+@app.post("/api/interview-prep/start", response_model=MockInterviewSession)
+def start_mock_interview(
+    interview_type: InterviewType,
+    user: UserOut = Depends(get_current_user),
+) -> MockInterviewSession:
+    return consultation_service.start_mock_interview(user.id, interview_type)
+
+
+@app.get("/api/interview-prep/{session_id}", response_model=MockInterviewSession)
+def get_mock_session(
+    session_id: str,
+    user: UserOut = Depends(get_current_user),
+) -> MockInterviewSession:
+    session = consultation_service.get_mock_session(session_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return session
+
+
+@app.post("/api/interview-prep/{session_id}/complete", response_model=MockInterviewSession)
+def complete_mock_interview(
+    session_id: str,
+    score: int = 0,
+    user: UserOut = Depends(get_current_user),
+) -> MockInterviewSession:
+    session = consultation_service.complete_mock_interview(session_id, score)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return session
+
+
+@app.get("/api/interview-prep/history/me", response_model=list[MockInterviewSession])
+def list_my_mock_sessions(user: UserOut = Depends(get_current_user)) -> list[MockInterviewSession]:
+    return consultation_service.list_mock_sessions(user.id)
+
+
+# =============================================
+# Document Vault endpoints
+# =============================================
+
+@app.post("/api/vault/documents", response_model=VaultDocument, status_code=201)
+def upload_vault_document(
+    doc: VaultDocument,
+    user: UserOut = Depends(get_current_user),
+) -> VaultDocument:
+    doc_with_user = doc.model_copy(update={"user_id": user.id})
+    return vault_service.add_document(doc_with_user)
+
+
+@app.get("/api/vault/documents", response_model=list[VaultDocument])
+def list_vault_documents(user: UserOut = Depends(get_current_user)) -> list[VaultDocument]:
+    return vault_service.list_documents(user.id)
+
+
+@app.delete("/api/vault/documents/{doc_id}", status_code=204)
+def delete_vault_document(doc_id: str, user: UserOut = Depends(get_current_user)) -> None:
+    doc = vault_service.get_document(doc_id)
+    if doc is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    if doc.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    vault_service.delete_document(doc_id)
+
+
+@app.get("/api/vault/alerts", response_model=list[ExpirationAlert])
+def get_expiration_alerts(user: UserOut = Depends(get_current_user)) -> list[ExpirationAlert]:
+    return vault_service.get_expiration_alerts(user.id)
+
+
+# =============================================
+# Receipt Tracker endpoints
+# =============================================
+
+@app.post("/api/receipts", response_model=ReceiptTracker, status_code=201)
+def add_receipt(
+    tracker: ReceiptTracker,
+    user: UserOut = Depends(get_current_user),
+) -> ReceiptTracker:
+    if not VaultService.validate_receipt_number(tracker.receipt_number):
+        raise HTTPException(
+            status_code=422,
+            detail="Invalid receipt number format. Expected: 3 letters + 10 digits (e.g., EAC2190012345)",
+        )
+    tracker_with_user = tracker.model_copy(update={"user_id": user.id})
+    return vault_service.add_receipt(tracker_with_user)
+
+
+@app.get("/api/receipts", response_model=list[ReceiptTracker])
+def list_receipts(user: UserOut = Depends(get_current_user)) -> list[ReceiptTracker]:
+    return vault_service.list_receipts(user.id)
+
+
+@app.post("/api/receipts/{tracker_id}/check", response_model=ReceiptTracker)
+def check_receipt(
+    tracker_id: str,
+    user: UserOut = Depends(get_current_user),
+) -> ReceiptTracker:
+    result = vault_service.check_receipt_status(tracker_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Receipt tracker not found")
+    return result
+
+
+@app.delete("/api/receipts/{tracker_id}", status_code=204)
+def delete_receipt(tracker_id: str, user: UserOut = Depends(get_current_user)) -> None:
+    if not vault_service.delete_receipt(tracker_id):
+        raise HTTPException(status_code=404, detail="Receipt tracker not found")
+
+
+# =============================================
+# Travel Advisory endpoints
+# =============================================
+
+@app.post("/api/travel-advisory", response_model=TravelAdvisory)
+def get_travel_advisory(
+    req: TravelAdvisoryRequest,
+    pending_forms: str = "",
+    has_advance_parole: bool = False,
+    user: UserOut = Depends(get_current_user),
+) -> TravelAdvisory:
+    forms = [f.strip() for f in pending_forms.split(",") if f.strip()] if pending_forms else []
+    return travel_advisor.assess_travel(
+        pending_forms=forms,
+        destination_country=req.destination_country,
+        has_advance_parole=has_advance_parole,
     )
 
 
