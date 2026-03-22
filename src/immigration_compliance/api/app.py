@@ -212,6 +212,26 @@ def serve_privacy() -> HTMLResponse:
 def serve_terms() -> HTMLResponse:
     return _serve_html(_frontend_dir / "terms.html", "Terms of service not found.")
 
+@app.get("/attorney-terms", response_class=HTMLResponse)
+def serve_attorney_terms() -> HTMLResponse:
+    return _serve_html(_frontend_dir / "attorney-terms.html", "Attorney terms not found.")
+
+@app.get("/attorney-code-of-conduct", response_class=HTMLResponse)
+def serve_attorney_code_of_conduct() -> HTMLResponse:
+    return _serve_html(_frontend_dir / "attorney-code-of-conduct.html", "Attorney code of conduct not found.")
+
+@app.get("/escrow-terms", response_class=HTMLResponse)
+def serve_escrow_terms() -> HTMLResponse:
+    return _serve_html(_frontend_dir / "escrow-terms.html", "Escrow terms not found.")
+
+@app.get("/anti-fraud-policy", response_class=HTMLResponse)
+def serve_anti_fraud_policy() -> HTMLResponse:
+    return _serve_html(_frontend_dir / "anti-fraud-policy.html", "Anti-fraud policy not found.")
+
+@app.get("/applicant-protection", response_class=HTMLResponse)
+def serve_applicant_protection() -> HTMLResponse:
+    return _serve_html(_frontend_dir / "applicant-protection.html", "Applicant protection policy not found.")
+
 @app.get("/health", response_model=HealthResponse)
 def health_check() -> HealthResponse:
     return HealthResponse()
