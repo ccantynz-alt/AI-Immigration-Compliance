@@ -210,6 +210,92 @@ The pitch: "9 hours/week of manual admin work eliminated. $230K/year in recovere
 - [ ] **Fax-to-digital pipeline** — receive faxes digitally, auto-file to cases (many courts still fax)
 - [ ] **Physical mail tracking** — log expected USCIS mail, flag when 30-day delivery window passes
 
+**AI Legal Research & Drafting** (Docketwise IQ-killer — our AI must be better)
+- [ ] **AI-powered legal research** — search immigration case law, policy memos, AAO decisions, BIA precedent
+- [ ] **AI draft generation** — cover letters, RFE responses, support letters, legal briefs, motions
+- [ ] **AI case strategy engine** — "based on similar approved cases, here's the recommended approach and evidence list"
+- [ ] **Precedent citation finder** — AI finds relevant approved petitions, AAO decisions, and circuit court rulings
+- [ ] **AI brief writer** — generate first drafts of legal briefs for EOIR/BIA proceedings
+- [ ] **Policy change impact analyzer** — when a new policy memo drops, AI flags which active cases are affected
+
+**CRM & Lead Management** (no competitor combines CRM + case management this well)
+- [ ] **Website lead capture forms** — embeddable on attorney's own website, leads flow into pipeline
+- [ ] **Multi-channel lead intake** — WhatsApp, Facebook Messenger, SMS, website chat, phone
+- [ ] **AI lead scoring** — ranks potential clients by case viability, complexity, and fee potential
+- [ ] **Consultation scheduler** — clients self-book paid consultations (Calendly-style, integrated)
+- [ ] **Follow-up automation** — drip email/SMS sequences for leads who didn't convert
+- [ ] **Referral tracking** — track which clients came from which referral source, measure ROI
+- [ ] **Lead-to-client conversion pipeline** — visual Kanban board from inquiry → consultation → retained → active case
+
+**Trust Accounting & Billing** (LollyLaw's #1 selling point — we must match it)
+- [ ] **Built-in IOLTA trust accounting** — three-way reconciliation (bank, trust ledger, client ledgers)
+- [ ] **Flat-fee billing with trust compliance** — auto-transfer from trust to operating when milestones hit
+- [ ] **Payment plan management** — recurring billing with automatic trust compliance tracking
+- [ ] **LawPay / Stripe Connect integration** — bar-compliant payment processing
+- [ ] **Government filing fee tracking** — track USCIS fees paid vs attorney fees vs costs advanced
+- [ ] **Time tracking** — start/stop timers on case activities, auto-capture time in forms/portals
+- [ ] **Billable vs non-billable categorization** — distinguish between billable work and admin overhead
+- [ ] **Invoice generation** — create professional invoices from time entries and flat fees
+- [ ] **Retainer management** — track retainer balances, auto-notify when running low
+- [ ] **Financial dashboards** — revenue, outstanding AR, trust balances, monthly trends
+
+**E-Filing & Government Portal Integration** (go beyond status checking — actually FILE from our platform)
+- [ ] **Direct USCIS e-filing** — submit forms from our platform without switching to USCIS portal
+- [ ] **DOL FLAG direct filing** — PERM labor certifications and LCA submissions from within the tool
+- [ ] **DOS CEAC integration** — push DS-160/DS-260 data, pull consular appointment status
+- [ ] **Auto-receipt capture** — when USCIS sends receipt numbers, auto-extract and file to case
+- [ ] **E-filing status tracking** — track submission status, acceptance/rejection, with auto-retry on failures
+- [ ] **EOIR ECAS e-filing** — file immigration court documents directly (PDF auto-formatted to 300 DPI requirements)
+
+**Team Management & Firm Operations** (INSZoom's enterprise advantage — we take it)
+- [ ] **Role-based access control** — attorney, paralegal, legal assistant, admin, partner permission levels
+- [ ] **Task assignment and tracking** — assign tasks to team members with deadlines and priorities
+- [ ] **Workload balancing dashboard** — visualize who's overloaded, redistribute cases intelligently
+- [ ] **Paralegal workflow queues** — structured task lists by role and priority
+- [ ] **Firm-wide case visibility** — partners see everything, associates see their cases, paralegals see assigned tasks
+- [ ] **Activity audit log** — track who did what, when, for compliance and accountability
+- [ ] **Multi-office support** — firms with multiple locations can manage across offices
+
+**Conflict Check & Ethics Compliance** (legally required — no serious platform skips this)
+- [ ] **Automated conflict of interest checking** — cross-reference new clients against all existing and past cases
+- [ ] **Adverse party detection** — flag when a new client's employer/sponsor appears as adverse in another case
+- [ ] **Ethics wall management** — restrict access when conflicts exist, document the wall
+- [ ] **Conflict check audit trail** — maintain records for bar compliance and malpractice insurance
+
+**Case Intelligence & Prediction** (our AI moat — nobody does this well yet)
+- [ ] **Family relationship mapping** — visualize petitioner, beneficiary, derivative beneficiaries, dependencies
+- [ ] **Case dependency tracking** — "this I-485 can't file until this I-140 is approved"
+- [ ] **Priority date forecasting** — AI predicts when priority dates will become current based on historical Visa Bulletin trends
+- [ ] **Case outcome prediction** — "cases like this have X% approval rate at Y service center" (with disclaimers)
+- [ ] **Filing strategy optimizer** — recommend service center, filing timing, premium processing decision
+- [ ] **Processing time predictor** — "based on current trends, expect a decision in X weeks from Y service center"
+- [ ] **Judge analytics for EOIR cases** — grant rates, common denial reasons, recommended preparation strategies
+- [ ] **RFE predictor** — flag potential RFE triggers before filing based on case characteristics
+
+**Template Library & Document Assembly** (saves hours per case)
+- [ ] **Cover letter templates** — by visa type, pre-written and customizable with firm branding
+- [ ] **RFE response templates** — organized by common RFE reasons (insufficient evidence, wage issues, specialty occupation, etc.)
+- [ ] **Support letter templates** — employer letters, expert opinion letters, professor recommendation letters
+- [ ] **Legal brief templates** — for EOIR master calendar, individual merits, motions to reopen/reconsider
+- [ ] **Mail merge engine** — auto-merge client data into any Word/PDF template
+- [ ] **Firm-specific template library** — attorneys save their own templates, share across the firm
+- [ ] **G-28 auto-generation** — generate and track G-28 (Notice of Entry of Appearance) for every case
+
+**Mobile App** (attorneys live on their phones)
+- [ ] **Native iOS + Android app** — not just responsive web, a real app
+- [ ] **Push notifications** — deadlines, case updates, new leads, client messages, government status changes
+- [ ] **Mobile document scanning** — camera → OCR → AI classification → filed to correct case
+- [ ] **Quick case status checks** — swipe through cases, see status at a glance
+- [ ] **Mobile client communication** — respond to client messages on the go
+- [ ] **Offline mode** — view case details and notes without internet, sync when connected
+
+**Competitor Migration & Onboarding** (remove every barrier to switching)
+- [ ] **One-click data migration** — import from Docketwise, INSZoom, LollyLaw, Clio, eImmigration
+- [ ] **Smart CSV/Excel field mapping** — AI maps imported columns to our data model automatically
+- [ ] **"Switch in a weekend" migration wizard** — guided step-by-step data import with validation
+- [ ] **White-glove onboarding assistance** — free migration support for firms switching from competitors
+- [ ] **Parallel run mode** — run both systems simultaneously during transition, compare outputs
+
 #### Attorney Portal — Phase B: Marketplace Layer (AFTER ADOPTION)
 These features activate once attorneys trust the platform and opt in.
 - [ ] Client pipeline dashboard — browse and accept pre-screened cases
@@ -245,6 +331,17 @@ These features activate once attorneys trust the platform and opt in.
 - [ ] AI document analysis (OCR + validation)
 - [ ] Application strength scoring algorithm
 - [ ] Attorney-applicant matching algorithm
+- [ ] **AI legal research engine** — immigration case law, policy memos, AAO/BIA decisions
+- [ ] **AI document drafting engine** — cover letters, briefs, RFE responses, support letters
+- [ ] **Case outcome prediction model** — approval probability by visa type, service center, case characteristics
+- [ ] **Priority date forecasting model** — predict Visa Bulletin movement based on historical data
+- [ ] **RFE risk assessment** — flag potential RFE triggers before filing
+- [ ] **Processing time prediction** — estimate decision timeline by form type and service center
+- [ ] **Policy change impact engine** — when new guidance drops, auto-flag affected active cases
+- [ ] **Smart form auto-population engine** — single intake → populate all required government forms
+- [ ] **Document classification AI** — auto-categorize uploaded documents by type (passport, I-94, pay stub, etc.)
+- [ ] **Translation engine** — client-facing content translation with legal disclaimers
+- [ ] **Conflict of interest detection** — cross-reference new clients against existing case database
 
 #### Backend / API
 - [x] FastAPI application
@@ -258,23 +355,62 @@ These features activate once attorneys trust the platform and opt in.
 - [x] Global immigration endpoints
 - [x] HRIS integration endpoints
 - [ ] Authentication and authorization (JWT/OAuth)
-- [ ] Role-based access control
+- [ ] Role-based access control (attorney, paralegal, admin, partner, applicant, employer)
 - [ ] Applicant endpoints
 - [ ] Attorney endpoints
 - [ ] Attorney matching endpoints
-- [ ] Messaging system
-- [ ] Payment processing integration
+- [ ] Messaging system (secure, encrypted, per-case threads)
+- [ ] Payment processing integration (LawPay, Stripe Connect)
 - [ ] Multi-language content delivery
+- [ ] Trust accounting / IOLTA endpoints
+- [ ] CRM / lead management endpoints
+- [ ] Consultation scheduling endpoints
+- [ ] AI legal research endpoints
+- [ ] AI document drafting endpoints
+- [ ] Government e-filing proxy endpoints (USCIS, DOL FLAG, EOIR ECAS)
+- [ ] Conflict check endpoints
+- [ ] Template library endpoints
+- [ ] Time tracking endpoints
+- [ ] Team management / task assignment endpoints
+- [ ] Mobile push notification service
+- [ ] Webhook system for real-time integrations
+- [ ] Data migration / import endpoints (competitor platforms)
+- [ ] Audit log system
 
 ### Competitive Benchmarks
 Check these competitors quarterly and ensure we match or exceed:
-- [ ] **Envoy Global** — employer immigration management
+
+**Attorney Case Management (PRIMARY competitors):**
+- [ ] **Docketwise** — market leader for small/mid firms, Smart Forms, Docketwise IQ AI ($69-199/user/mo)
+- [ ] **INSZoom (Mitratech)** — enterprise/corporate immigration, multi-country, RPA bot ($200-500+/user/mo)
+- [ ] **LollyLaw** — 40+ workflows, trust accounting, real-time collaborative forms
+- [ ] **eImmigration (Cerenade)** — 300+ multilingual forms, all-in-one, solo practitioner friendly ($55+/user/mo)
+- [ ] **Imagility** — AI petition drafting, I-9/LCA/PAF compliance modules
+- [ ] **CampLegal** — claims 80% case prep reduction, strong CRM/lead management
+- [ ] **Bridge US** — immigration case management for attorneys
+
+**General Legal Platforms (with immigration capabilities):**
+- [ ] **Clio** — most widely used legal platform, immigration via Docketwise/PrimaFacie integration ($49+/user/mo)
+- [ ] **MyCase** — direct USCIS/DOL/CEAC API integrations, immigration add-on powered by Docketwise
+
+**AI-First Competitors (emerging threat):**
+- [ ] **Visalaw.ai / Gen** — AILA partnership, GPT-4 powered legal research and drafting
+- [ ] **LegistAI** — native AI architecture for legal research and document drafting
+- [ ] **Drafty.ai** — automates document drafting based on firm preferences
+
+**Employer Compliance:**
+- [ ] **Envoy Global** — employer immigration management (valued at $1.4B)
 - [ ] **LawLogix** — I-9/E-Verify compliance
 - [ ] **Tracker Corp** — I-9 compliance
 - [ ] **Fragomen** — global immigration services (enterprise)
+
+**Consumer/Marketplace:**
 - [ ] **Boundless** — consumer immigration (family/spouse visas)
 - [ ] **Visabot/ImmiHelp** — consumer visa assistance
-- [ ] **Bridge US** — immigration case management for attorneys
+
+**Adjacent (Global Mobility / EOR):**
+- [ ] **Deel** — global hiring + immigration ($1.3B revenue, different model but brand awareness threat)
+- [ ] **Envoy Global** — employer-side immigration management
 
 ### Language Strategy
 - **Applicant-facing UI:** Multi-language support planned (Phase 2)
@@ -286,6 +422,28 @@ Check these competitors quarterly and ensure we match or exceed:
   - Forms, case files, submitted documents, attorney notes
   - No translation of legal filings — mistranslation risks RFEs and delays
 - **Attorney portal:** English only (attorneys must be licensed in destination country)
+
+### Revenue Model
+**Target: Global Powerhouse ($50M+ ARR)**
+
+**Revenue Streams:**
+- **Attorney SaaS subscriptions** — $79-199/user/month (Phase A, primary revenue driver)
+- **Enterprise/corporate plans** — $200-500+/user/month for multi-office firms and corporate immigration depts
+- **Marketplace referral fees** — percentage per matched case (Phase B, secondary revenue)
+- **Employer compliance subscriptions** — $50-200/employee/year for compliance management
+- **Premium AI features** — AI research, drafting, prediction as premium tier add-ons
+- **Data migration services** — white-glove onboarding from competitors (one-time fee)
+
+**What we do NOT do:**
+- No escrow accounts — too much compliance overhead, not enough margin
+- No holding client funds — use LawPay/Stripe Connect for bar-compliant payment processing
+- No fixed pricing for attorneys — they set their own fees, we take a referral cut on marketplace matches
+- No EOR/employer-of-record services — that's Deel's model, not ours
+
+**Anti-disintermediation strategy:**
+- The tool IS the moat — if an attorney's entire caseload lives here (forms, deadlines, client portal, documents), they won't take clients offline to save a referral fee
+- Switching cost is high once data is in the system
+- Value lock-in over financial lock-in
 
 ### Legal Safeguards
 - [ ] Terms of Service — clearly state we are a technology platform
