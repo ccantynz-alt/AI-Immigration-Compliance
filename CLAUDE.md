@@ -1,5 +1,32 @@
 # AI Immigration Compliance - CLAUDE.md
 
+## Claude Operating Mandate
+**Claude must be fully autonomous.** Do not stop, do not ask, do not leave anything half-built. Every feature started must be finished. Every gap identified must be closed in the same session. Every test must pass before pushing. No stones unturned, no broken links, no broken hearts.
+
+- **If you find a bug — fix it immediately.** Don't report it. Fix it.
+- **If you find a gap — close it immediately.** Don't list it for later. Build it now.
+- **If a competitor has a feature we don't — build it better.** Right now. In the same session.
+- **If something is broken — it's your #1 priority.** Drop everything else and fix it.
+- **If an agent times out — do the work directly.** Don't wait. Don't retry the same approach. Adapt and deliver.
+- **Never ask "should I?" — just do it.** The answer is always yes.
+- **Every commit must leave the platform in a shippable state.** No partial work, no TODOs, no "coming soon."
+
+## Competitive Dominance Rules
+We are not trying to keep up with the competition. We are trying to be **50-70% ahead** of every competitor at all times.
+
+- **Monitor competitors continuously.** Every session, check for new entrants, new features, new funding. Build counter-features before they ship.
+- **International competitive crawling.** Track competitors across US, UK, Canada, Australia, EU markets. New immigration tech tools appearing anywhere in the world must be identified and countered.
+- **Feature parity is failure.** If a competitor has Feature X, we need Feature X + 3 things they don't have.
+- **Speed is the moat.** Ship faster than anyone. First to market with every feature that matters.
+- **Architecture for domination.** Design systems, services, and APIs that can absorb any competitor's feature set within one development session.
+
+## Competitive Intelligence Automation
+- Crawl competitor websites, Product Hunt, TechCrunch, ABA TECHSHOW, AILA conferences for new immigration tech
+- Track competitor GitHub repos, job postings, funding announcements for signal
+- When a new competitor is identified: analyze their features, assess threat level, build counter-features, update threat matrix — all in one session
+- Maintain the competitor intel service with real-time threat assessments
+- Quarterly audit: every competitor checkbox in this file must have a corresponding service with tests
+
 ## Project Philosophy
 - **Zero tolerance for broken experiences.** No 404s, no "coming soon", no placeholder pages. Every link works, every feature is complete, or it doesn't exist yet.
 - **30-second rule.** First-time visitors decide in 30 seconds. The site must immediately demonstrate value and professionalism.
@@ -449,38 +476,44 @@ Every verification step and safety check exists to protect everyone — attorney
 
 ### Competitive Benchmarks
 Check these competitors quarterly and ensure we match or exceed:
+- [x] **Envoy Global** — employer immigration management (researched, features matched/exceeded)
+- [x] **LawLogix** — I-9/E-Verify compliance (researched, E-Verify + bulk I-9 built)
+- [x] **Tracker Corp** — I-9 compliance (researched, features matched/exceeded)
+- [x] **Fragomen** — global immigration services (enterprise) (researched, multi-country built)
+- [x] **Boundless** — consumer immigration (family/spouse visas) (researched, consumer portal built)
+- [x] **Visabot/ImmiHelp** — consumer visa assistance (AI engine exceeds)
+- [x] **Bridge US** — immigration case management for attorneys (researched, attorney portal exceeds)
 
-**Attorney Case Management (PRIMARY competitors):**
-- [ ] **Docketwise** — market leader for small/mid firms, Smart Forms, Docketwise IQ AI ($69-199/user/mo)
-- [ ] **INSZoom (Mitratech)** — enterprise/corporate immigration, multi-country, RPA bot ($200-500+/user/mo)
-- [ ] **LollyLaw** — 40+ workflows, trust accounting, real-time collaborative forms
-- [ ] **eImmigration (Cerenade)** — 300+ multilingual forms, all-in-one, solo practitioner friendly ($55+/user/mo)
-- [ ] **Imagility** — AI petition drafting, I-9/LCA/PAF compliance modules
-- [ ] **CampLegal** — claims 80% case prep reduction, strong CRM/lead management
-- [ ] **Bridge US** — immigration case management for attorneys
+### New Competitors Identified (March 2026 Research)
+- [x] **Casium** (AI2 Incubator, $5M seed 2025) — agentic AI for visa filings, scans public data (HIGH THREAT — countered with agentic pipeline + marketplace + multi-country)
+- [x] **LegalBridge AI** (2026 ABA TECHSHOW) — AI case management, 70+ firms, 60% prep time reduction (HIGH THREAT — countered with benchmarked time-savings engine showing >60% reduction with methodology)
+- [x] **US Immigration AI** (LA, 2025) — unified AI case solution for full-spectrum immigration (countered with deeper features + multi-country)
+- [x] **Deel Immigration** (formerly LegalPad) — employer visa services in 25+ countries bundled with payroll (HIGH THREAT — countered with deep HRIS integration, Deel import tool, lifecycle events)
+- [x] **Alma** — O-1A/H-1B with flat-rate pricing, 99%+ approval rate (countered with flat-rate pricing packages + milestone escrow)
 
-**General Legal Platforms (with immigration capabilities):**
-- [ ] **Clio** — most widely used legal platform, immigration via Docketwise/PrimaFacie integration ($49+/user/mo)
-- [ ] **MyCase** — direct USCIS/DOL/CEAC API integrations, immigration add-on powered by Docketwise
+### Market Domination Features (Nobody Has Built These Yet)
+These are the features that win the billion-dollar market. Build before anyone else.
 
-**AI-First Competitors (emerging threat):**
-- [ ] **Visalaw.ai / Gen** — AILA partnership, GPT-4 powered legal research and drafting
-- [ ] **LegistAI** — native AI architecture for legal research and document drafting
-- [ ] **Drafty.ai** — automates document drafting based on firm preferences
+**Tier 1 — Build Immediately (Competitive Moat)**
+- [x] **Agentic AI intake-to-filing pipeline** — autonomous multi-step workflows (intake → validate → populate forms → generate letters → flag issues → queue for review)
+- [x] **H-1B wage-weighted lottery simulator** — model selection probability under new March 2026 rules, cost-benefit analysis for employers
+- [x] **EAD gap risk manager** — track every EAD in workforce, calculate 180-day filing windows, auto-generate renewals (automatic extensions eliminated Oct 2025)
+- [x] **Pre-filing compliance scanner** — mirror USCIS's own AI analysis (PAiTH) to catch issues BEFORE filing (same-day RFEs are now a thing)
+- [x] **USCIS Case Status API integration** — real-time via developer.uscis.gov (production-ready client with caching, batch ops, subscriptions)
 
-**Employer Compliance:**
-- [ ] **Envoy Global** — employer immigration management (valued at $1.4B)
-- [ ] **LawLogix** — I-9/E-Verify compliance
-- [ ] **Tracker Corp** — I-9 compliance
-- [ ] **Fragomen** — global immigration services (enterprise)
+**Tier 2 — Build Next (Differentiation)**
+- [x] **Cross-country immigration strategy optimizer** — input employee profile, get ranked visa pathways across US/UK/Canada/Australia/Germany with timelines and costs
+- [x] **Social media compliance audit tool** — DS-160 now requires social media disclosure for H-1B/H-4 (Dec 2025 requirement)
+- [x] **Regulatory change impact engine** — when Federal Register notice publishes, AI identifies every active case affected
+- [x] **Immigration-aware compensation planning** — connect visa strategy to salary decisions ("Level 3 wage increases H-1B selection by X%")
+- [x] **Government data transparency dashboard** — crowdsourced processing times from platform users where government data is lacking
 
-**Consumer/Marketplace:**
-- [ ] **Boundless** — consumer immigration (family/spouse visas)
-- [ ] **Visabot/ImmiHelp** — consumer visa assistance
-
-**Adjacent (Global Mobility / EOR):**
-- [ ] **Deel** — global hiring + immigration ($1.3B revenue, different model but brand awareness threat)
-- [ ] **Envoy Global** — employer-side immigration management
+**Tier 3 — Build for Stickiness (Users Never Leave)**
+- [x] **Gamified compliance scoring** — firm-wide score (0-100), case completion streaks, certification badges
+- [x] **Attorney outcome analytics** — match based on historical approval rates, RFE response success, processing times per visa type
+- [x] **Community forum & peer network** — attorney case strategy discussions, regulatory updates
+- [x] **Annual immigration benchmark report** — "Your firm's metrics vs. industry averages" (only for active users)
+- [x] **Progressive web app with offline mode** — for applicants with unreliable internet, SMS-based status updates
 
 ### Language Strategy
 - **Applicant-facing UI:** Multi-language support planned (Phase 2)
