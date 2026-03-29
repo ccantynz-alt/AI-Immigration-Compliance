@@ -11,6 +11,18 @@
 - **Never ask "should I?" — just do it.** The answer is always yes.
 - **Every commit must leave the platform in a shippable state.** No partial work, no TODOs, no "coming soon."
 
+## Upgrade Policy — Hard Mandate
+**Every component, dependency, library, and piece of software must be at the most advanced, stable version at all times.** This is non-negotiable. Never ask whether to upgrade — just do it.
+
+- **If a dependency has a newer stable version — upgrade it immediately.** No questions, no delays.
+- **If a framework, runtime, or tool has a newer release — adopt it.** Stay on the cutting edge.
+- **If an API version is deprecated or superseded — migrate now.** Don't wait for breakage.
+- **Complacency is failure.** Our customers pay for reliability, great flow, good software, and advanced features. Outdated software delivers none of that.
+- **Upgrade proactively, not reactively.** Don't wait for vulnerabilities or deprecation warnings. Stay ahead.
+- **Every session: check for upgrades.** Dependencies, runtimes, tooling, CI/CD — everything gets checked, everything gets updated.
+- **Test after every upgrade.** Upgrades ship only when tests pass. But the upgrade itself is never optional.
+- **This applies to everything:** Python packages, npm packages, API versions, database drivers, deployment configs, CI/CD pipelines, linters, formatters, test frameworks — no exceptions.
+
 ## Competitive Dominance Rules
 We are not trying to keep up with the competition. We are trying to be **50-70% ahead** of every competitor at all times.
 
