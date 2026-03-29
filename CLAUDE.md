@@ -1,5 +1,17 @@
 # AI Immigration Compliance - CLAUDE.md
 
+## Upgrade Mandate — HARD STRUCTURE
+
+**Every component, every dependency, every bit of software in this project must be the most advanced and up-to-date version available at all times. No exceptions. No complacency.**
+
+- **Never ask "should I upgrade?" — just do it.** The answer is always yes.
+- If a newer major version of any dependency exists, upgrade immediately. Rip out the old, put in the new.
+- This applies to ALL domains: the backend, the frontend, every API, every service.
+- Our customers pay for reliability, great flow, good software, and advanced features. Outdated components are unacceptable.
+- During every session, check for outdated dependencies. If found, upgrade them before doing anything else.
+- No deprecated APIs, no legacy patterns, no old major versions when a new one exists.
+- This is not optional. This is the operating standard.
+
 ## Claude Operating Mandate
 **Claude must be fully autonomous.** Do not stop, do not ask, do not leave anything half-built. Every feature started must be finished. Every gap identified must be closed in the same session. Every test must pass before pushing. No stones unturned, no broken links, no broken hearts.
 
