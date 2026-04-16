@@ -107,6 +107,13 @@ from immigration_compliance.services.gate_test_service import (
     TestCategory,
     TestStatus,
 )
+from immigration_compliance.services.voxlen_service import (
+    ExportFormat,
+    LLMProvider,
+    STTProvider,
+    VoxlenService,
+    WritingStyle,
+)
 
 # Resolve frontend directory
 _root = Path(__file__).resolve().parent.parent.parent.parent
@@ -168,6 +175,9 @@ crawler = CompetitiveCrawlerService()
 # Zero Idle Time — Continuous Improvement flywheel + Gate Test watchdog
 cis_service = ContinuousImprovementService()
 gate_test = GateTestService()
+
+# Voxlen — voice dictation + grammar + export for immigration professionals
+voxlen_service = VoxlenService()
 
 # Gap Closers — competitive response features
 hris_deep = HRISDeepService()
@@ -1848,3 +1858,171 @@ def gate_test_reject_repair(repair_id: str, reason: str = ""):
         return gate_test.reject_repair(repair_id, reason=reason)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+
+
+# ---------------------------------------------------------------------------
+# Voxlen — voice dictation + grammar + export
+# ---------------------------------------------------------------------------
+
+class VoxlenConfigIn(BaseModel):
+    provider: str  # "deepgram" | "openai" | "anthropic"
+    api_key: str
+
+
+class VoxlenSessionIn(BaseModel):
+    language: str = "en-US"
+    style: WritingStyle = WritingStyle.LEGAL_FORMAL
+    template_key: str | None = None
+    stt_provider: STTProvider = STTProvider.WEB_SPEECH
+    llm_provider: LLMProvider = LLMProvider.NONE
+    title: str = ""
+
+
+class VoxlenChunkIn(BaseModel):
+    text: str
+    is_final: bool = True
+    confidence: float = 1.0
+    started_at_ms: int = 0
+    ended_at_ms: int = 0
+
+
+class VoxlenPolishIn(BaseModel):
+    style: WritingStyle | None = None
+
+
+@app.get("/api/voxlen/catalog")
+def voxlen_catalog():
+    """Public metadata — languages, styles, voice commands, templates."""
+    return VoxlenService.catalog()
+
+
+@app.get("/api/voxlen/provider-status")
+def voxlen_provider_status(user: UserOut = Depends(get_current_user)):
+    return voxlen_service.provider_status()
+
+
+@app.post("/api/voxlen/configure")
+def voxlen_configure(
+    body: VoxlenConfigIn,
+    user: UserOut = Depends(get_current_user),
+):
+    try:
+        return voxlen_service.configure_provider(body.provider, body.api_key)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.post("/api/voxlen/sessions")
+def voxlen_start_session(
+    body: VoxlenSessionIn,
+    user: UserOut = Depends(get_current_user),
+):
+    try:
+        return voxlen_service.start_session(
+            owner_id=user.id,
+            language=body.language,
+            style=body.style,
+            template_key=body.template_key,
+            stt_provider=body.stt_provider,
+            llm_provider=body.llm_provider,
+            title=body.title,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.get("/api/voxlen/sessions")
+def voxlen_list_sessions(user: UserOut = Depends(get_current_user)):
+    return voxlen_service.list_sessions(owner_id=user.id)
+
+
+@app.get("/api/voxlen/sessions/{session_id}")
+def voxlen_get_session(
+    session_id: str,
+    user: UserOut = Depends(get_current_user),
+):
+    try:
+        return voxlen_service.get_session(session_id, owner_id=user.id)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+@app.post("/api/voxlen/sessions/{session_id}/append")
+def voxlen_append_chunk(
+    session_id: str,
+    body: VoxlenChunkIn,
+    user: UserOut = Depends(get_current_user),
+):
+    try:
+        return voxlen_service.append_chunk(
+            session_id=session_id,
+            owner_id=user.id,
+            text=body.text,
+            is_final=body.is_final,
+            confidence=body.confidence,
+            started_at_ms=body.started_at_ms,
+            ended_at_ms=body.ended_at_ms,
+        )
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+@app.post("/api/voxlen/sessions/{session_id}/polish")
+def voxlen_polish(
+    session_id: str,
+    body: VoxlenPolishIn,
+    user: UserOut = Depends(get_current_user),
+):
+    try:
+        return voxlen_service.polish(
+            session_id=session_id, owner_id=user.id, style=body.style
+        )
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+@app.post("/api/voxlen/sessions/{session_id}/close")
+def voxlen_close_session(
+    session_id: str,
+    user: UserOut = Depends(get_current_user),
+):
+    try:
+        return voxlen_service.close_session(session_id, owner_id=user.id)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+@app.delete("/api/voxlen/sessions/{session_id}")
+def voxlen_delete_session(
+    session_id: str,
+    user: UserOut = Depends(get_current_user),
+):
+    try:
+        voxlen_service.delete_session(session_id, owner_id=user.id)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    return {"status": "deleted"}
+
+
+@app.get("/api/voxlen/sessions/{session_id}/export")
+def voxlen_export(
+    session_id: str,
+    fmt: ExportFormat = ExportFormat.TXT,
+    user: UserOut = Depends(get_current_user),
+):
+    try:
+        return voxlen_service.export(session_id, owner_id=user.id, fmt=fmt)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
