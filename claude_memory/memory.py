@@ -88,6 +88,106 @@ def cosine(a: list[float], b: list[float]) -> float:
     return dot / (na * nb)
 
 
+def openai_embedder(
+    api_key: str | None = None,
+    model: str = "text-embedding-3-small",
+    *,
+    endpoint: str = "https://api.openai.com/v1/embeddings",
+    timeout: float = 30.0,
+) -> Embedder:
+    """Return an Embedder that calls OpenAI's embeddings API.
+
+    Uses `urllib.request` — no `openai` package required. The returned callable
+    raises on any HTTP error so recall failures are loud, not silent.
+    """
+    key = api_key or os.environ.get("OPENAI_API_KEY")
+    if not key:
+        raise ValueError("OPENAI_API_KEY is not set and api_key was not provided")
+
+    def _embed(text: str) -> list[float]:
+        text = text or ""
+        if not text.strip():
+            return [0.0] * EMBEDDING_DIM
+        return _http_embed(
+            endpoint=endpoint,
+            headers={
+                "Authorization": f"Bearer {key}",
+                "Content-Type": "application/json",
+            },
+            payload={"model": model, "input": text},
+            timeout=timeout,
+            response_path=("data", 0, "embedding"),
+        )
+
+    return _embed
+
+
+def voyage_embedder(
+    api_key: str | None = None,
+    model: str = "voyage-3",
+    *,
+    input_type: str | None = None,
+    endpoint: str = "https://api.voyageai.com/v1/embeddings",
+    timeout: float = 30.0,
+) -> Embedder:
+    """Return an Embedder that calls Voyage AI's embeddings API.
+
+    `input_type` may be 'query' or 'document' to get asymmetric embeddings.
+    Falls back to None (symmetric) by default.
+    """
+    key = api_key or os.environ.get("VOYAGE_API_KEY")
+    if not key:
+        raise ValueError("VOYAGE_API_KEY is not set and api_key was not provided")
+
+    def _embed(text: str) -> list[float]:
+        text = text or ""
+        if not text.strip():
+            return [0.0] * EMBEDDING_DIM
+        payload: dict[str, Any] = {"model": model, "input": [text]}
+        if input_type:
+            payload["input_type"] = input_type
+        return _http_embed(
+            endpoint=endpoint,
+            headers={
+                "Authorization": f"Bearer {key}",
+                "Content-Type": "application/json",
+            },
+            payload=payload,
+            timeout=timeout,
+            response_path=("data", 0, "embedding"),
+        )
+
+    return _embed
+
+
+def _http_embed(
+    *,
+    endpoint: str,
+    headers: dict[str, str],
+    payload: dict[str, Any],
+    timeout: float,
+    response_path: tuple[Any, ...],
+) -> list[float]:
+    """POST JSON, navigate `response_path`, return a float list."""
+    import urllib.error
+    import urllib.request
+
+    body = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(endpoint, data=body, headers=headers, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode("utf-8", errors="replace")[:500]
+        raise RuntimeError(f"embedding HTTP {e.code}: {detail}") from e
+    node: Any = data
+    for key in response_path:
+        node = node[key]
+    if not isinstance(node, list) or not all(isinstance(x, (int, float)) for x in node):
+        raise RuntimeError("embedding response did not contain a numeric vector")
+    return [float(x) for x in node]
+
+
 def _encode_vec(vec: list[float]) -> bytes:
     return array.array("f", vec).tobytes()
 
@@ -104,7 +204,20 @@ def _decode_vec(blob: bytes | None) -> list[float]:
 # Memory store
 # ---------------------------------------------------------------------------
 
-VALID_KINDS = {"note", "decision", "state", "question", "session", "fact"}
+VALID_KINDS = {
+    # Original six — free-form content by role in the project.
+    "note",          # generic observation, reminder, or scratch
+    "decision",      # "we chose X over Y because Z"
+    "state",         # current state of the project (overwrite-friendly)
+    "question",      # open question awaiting resolution
+    "session",       # session summary / what happened
+    "fact",          # stable piece of knowledge (API shape, constant, etc.)
+    # Expanded taxonomy — sharper recall, less noise at query time.
+    "preference",    # user style preferences ("prefers dark mode", "hates emojis")
+    "person",        # profile of a person mentioned across sessions
+    "project_meta",  # repo topology, conventions, build/test commands
+    "insight",       # non-obvious learning worth re-reading later
+}
 
 
 @dataclass

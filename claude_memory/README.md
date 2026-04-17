@@ -80,14 +80,49 @@ entries (id, project, kind, content, tags, created_at, updated_at, embedding)
 entries_fts (FTS5 over content + tags, auto-maintained)
 ```
 
-`kind` is one of: `note`, `decision`, `state`, `question`, `session`, `fact`.
+`kind` is one of:
+
+| Kind | Use for |
+| --- | --- |
+| `note` | generic observation or scratch |
+| `decision` | "we chose X over Y because Z" — append to decisions log |
+| `state` | current state of the project (overwrite-friendly) |
+| `question` | open question awaiting resolution |
+| `session` | session summary / what happened |
+| `fact` | stable knowledge (API shape, constant, URL) |
+| `preference` | user style preferences ("prefers dark mode", "no emojis") |
+| `person` | profile of a person mentioned across sessions |
+| `project_meta` | repo topology, conventions, build/test commands |
+| `insight` | non-obvious learning worth re-reading later |
+
+Sharper kinds mean sharper recall — filtering by `kind=preference` at session
+start surfaces the user's style preferences without dragging in unrelated
+notes.
 
 ## Recall scoring
 
 Hybrid: `0.6 * cosine(vec) + 0.4 * bm25_normalized(fts)`. The embedder is
 pluggable — the default `hash_embedder` is deterministic and dependency-free.
-Swap in `sentence-transformers` or a cloud embedding API by passing a
-callable to `Memory(embedder=...)`.
+
+### Pluggable embedders
+
+```python
+from memory import Memory, openai_embedder, voyage_embedder
+
+# Default: hash-based, no network, reproducible
+mem = Memory("claude_memory.db")
+
+# OpenAI (reads OPENAI_API_KEY from env if api_key is omitted)
+mem = Memory("claude_memory.db", embedder=openai_embedder(model="text-embedding-3-small"))
+
+# Voyage (reads VOYAGE_API_KEY from env)
+mem = Memory("claude_memory.db", embedder=voyage_embedder(model="voyage-3"))
+```
+
+The factories use `urllib.request` — no `openai` or `voyageai` packages
+required. Both raise on missing API key at construction time (fail fast) and
+raise on HTTP errors at embed time (fail loud). A database built with one
+embedder should not be reused with another of a different dimension.
 
 ## Environment variables
 

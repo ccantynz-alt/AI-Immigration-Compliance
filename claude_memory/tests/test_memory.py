@@ -20,6 +20,8 @@ from memory import (  # noqa: E402
     cosine,
     hash_embedder,
     main as cli_main,
+    openai_embedder,
+    voyage_embedder,
 )
 from memory_mcp import handle_tool, TOOL_SPECS  # noqa: E402
 
@@ -254,7 +256,52 @@ def test_cli_stats_reports_total(tmp_path):
 # --- Schema / persistence ------------------------------------------------
 
 def test_valid_kinds_match_contract():
-    assert VALID_KINDS == {"note", "decision", "state", "question", "session", "fact"}
+    assert VALID_KINDS == {
+        "note",
+        "decision",
+        "state",
+        "question",
+        "session",
+        "fact",
+        "preference",
+        "person",
+        "project_meta",
+        "insight",
+    }
+
+
+def test_store_accepts_expanded_kinds(db):
+    for kind in ("preference", "person", "project_meta", "insight"):
+        entry = db.store(f"{kind} content", kind=kind)
+        assert entry["kind"] == kind
+
+
+# --- Embedder factories --------------------------------------------------
+
+def test_openai_embedder_requires_api_key(monkeypatch):
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    with pytest.raises(ValueError, match="OPENAI_API_KEY"):
+        openai_embedder()
+
+
+def test_voyage_embedder_requires_api_key(monkeypatch):
+    monkeypatch.delenv("VOYAGE_API_KEY", raising=False)
+    with pytest.raises(ValueError, match="VOYAGE_API_KEY"):
+        voyage_embedder()
+
+
+def test_openai_embedder_picks_up_env_key(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    embed = openai_embedder()
+    assert callable(embed)
+
+
+def test_embedder_factories_return_zero_vector_for_empty_input(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    monkeypatch.setenv("VOYAGE_API_KEY", "vy-test")
+    # Empty text must not make a network call.
+    assert openai_embedder()("") == [0.0] * 256
+    assert voyage_embedder()("   ") == [0.0] * 256
 
 
 def test_persistence_across_reopen(tmp_path):
