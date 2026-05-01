@@ -190,8 +190,8 @@ The pitch: "9 hours/week of manual admin work eliminated. $230K/year in recovere
 - [ ] Document management (organize, tag, version control per case)
 - [x] Case notes and internal memos (CaseWorkspaceService.add_note with internal/client_visible visibility)
 - [x] Case timeline/history view (CaseWorkspaceService timeline records 17 event kinds — case_created, intake_started/completed, document_uploaded, forms_populated, attorney_assigned, conflict_check_run, rfe_risk_assessed, case_filed, rfe_received/responded, decision_received, deadline_added, note_added, status_changed, milestone_reached)
-- [x] **RFE tracking and response tools** — track RFE deadlines, draft responses with AI assistance (CaseWorkspaceService.add_rfe_response_deadline auto-computes 87-day response window from receipt date; AI response drafting still pending)
-- [ ] **AI RFE response builder** — ML-powered: summarize RFE notice, match evidence, draft response with citations
+- [x] **RFE tracking and response tools** — track RFE deadlines, draft responses with AI assistance (CaseWorkspaceService.add_rfe_response_deadline auto-computes 87-day response window; RFEResponseService produces full structured drafts in seconds)
+- [x] **AI RFE response builder** — ML-powered: summarize RFE notice, match evidence, draft response with citations (RFEResponseService: 11-category rules-based classifier with regex pattern matching detects multiple discrete issues from a single RFE notice; per-category response templates with [VERIFIED]/[PENDING_VERIFICATION]/[CITATION_NEEDED] markers; matches uploaded exhibits to each issue type; auto-computes 87-day response deadline; renders text + review formats; same anti-hallucination discipline as the petition letter generator)
 - [x] **Form auto-fill engine** — enter client data once, populate across all required forms (I-130, I-485, I-765, I-131, etc.) (FormPopulationService.populate_bundle)
 - [x] **Bi-directional form sync** — change data in a form, it updates the client profile; change the profile, all forms update automatically (PATCH /api/forms/records/{id}/fields with provenance log + manual_overridden flag; re-running populate from a session re-pulls latest source values)
 - [x] **Auto-fill empty fields with N/A** — per USCIS guidelines, auto-populate blank fields to prevent rejection (empty_field_default in FormPopulationService.populate)
@@ -335,7 +335,7 @@ The pitch: "9 hours/week of manual admin work eliminated. $230K/year in recovere
 
 **Template Library & Document Assembly** (saves hours per case)
 - [ ] **Cover letter templates** — by visa type, pre-written and customizable with firm branding
-- [ ] **RFE response templates** — organized by common RFE reasons (insufficient evidence, wage issues, specialty occupation, etc.)
+- [x] **RFE response templates** — organized by common RFE reasons (insufficient evidence, wage issues, specialty occupation, etc.) (RFEResponseService.CATEGORY_RULES — 11 templates covering specialty occupation, employer-employee relationship, degree mismatch, evidentiary criteria, I-864 deficiency, marriage bona fides, status violation, public charge, financial evidence, missing form fields, generic requests; each template substitutes case-specific facts at render time)
 - [ ] **Support letter templates** — employer letters, expert opinion letters, professor recommendation letters
 - [ ] **Legal brief templates** — for EOIR master calendar, individual merits, motions to reopen/reconsider
 - [ ] **Mail merge engine** — auto-merge client data into any Word/PDF template

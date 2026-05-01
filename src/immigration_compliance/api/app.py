@@ -111,6 +111,7 @@ from immigration_compliance.services.packet_assembly_service import PacketAssemb
 from immigration_compliance.services.regulatory_impact_service import RegulatoryImpactService
 from immigration_compliance.services.migration_importer_service import MigrationImporterService
 from immigration_compliance.services.petition_letter_service import PetitionLetterService
+from immigration_compliance.services.rfe_response_service import RFEResponseService
 
 # Resolve frontend directory
 _root = Path(__file__).resolve().parent.parent.parent.parent
@@ -192,6 +193,7 @@ packet_assembly = PacketAssemblyService(case_workspace=case_workspace, document_
 regulatory_impact_engine = RegulatoryImpactService(case_workspace=case_workspace)
 migration_importer = MigrationImporterService(case_workspace=case_workspace, intake_engine=intake_engine)
 petition_letter = PetitionLetterService(case_workspace=case_workspace, intake_engine=intake_engine, document_intake=document_intake)
+rfe_response = RFEResponseService(case_workspace=case_workspace, intake_engine=intake_engine, document_intake=document_intake)
 
 # Gap Closers — competitive response features
 hris_deep = HRISDeepService()
@@ -2907,3 +2909,84 @@ def get_petition_draft_review(draft_id: str, user: UserOut = Depends(get_current
     if ws is None or (ws["applicant_id"] != user.id and ws.get("attorney_id") != user.id):
         raise HTTPException(status_code=403, detail="Access denied")
     return PlainTextResponse(content=PetitionLetterService.render_review_text(d))
+
+
+# =============================================
+# RFE Response Drafter endpoints
+# =============================================
+
+class RFEResponseDraftRequest(BaseModel):
+    workspace_id: str
+    notice_text: str
+    rfe_received_date: str | None = None
+    attorney_profile: dict | None = None
+
+class RFEParseRequest(BaseModel):
+    notice_text: str
+
+@app.get("/api/rfe-response/categories")
+def list_rfe_response_categories():
+    return RFEResponseService.list_categories()
+
+@app.post("/api/rfe-response/parse")
+def parse_rfe_notice(req: RFEParseRequest):
+    return {"detected": RFEResponseService.parse_notice(req.notice_text)}
+
+@app.post("/api/rfe-response/draft", status_code=201)
+def draft_rfe_response(req: RFEResponseDraftRequest, user: UserOut = Depends(get_current_user)):
+    ws = case_workspace.get_workspace(req.workspace_id)
+    if ws is None:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    if ws["applicant_id"] != user.id and ws.get("attorney_id") != user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    try:
+        return rfe_response.draft_response(
+            workspace_id=req.workspace_id,
+            notice_text=req.notice_text,
+            rfe_received_date=req.rfe_received_date,
+            attorney_profile=req.attorney_profile,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+@app.get("/api/rfe-response/drafts")
+def list_rfe_response_drafts(workspace_id: str | None = None, user: UserOut = Depends(get_current_user)):
+    if workspace_id:
+        ws = case_workspace.get_workspace(workspace_id)
+        if ws is None:
+            raise HTTPException(status_code=404, detail="Workspace not found")
+        if ws["applicant_id"] != user.id and ws.get("attorney_id") != user.id:
+            raise HTTPException(status_code=403, detail="Access denied")
+    return rfe_response.list_drafts(workspace_id=workspace_id)
+
+@app.get("/api/rfe-response/drafts/{draft_id}")
+def get_rfe_response_draft(draft_id: str, user: UserOut = Depends(get_current_user)):
+    d = rfe_response.get_draft(draft_id)
+    if d is None:
+        raise HTTPException(status_code=404, detail="Draft not found")
+    ws = case_workspace.get_workspace(d["workspace_id"])
+    if ws is None or (ws["applicant_id"] != user.id and ws.get("attorney_id") != user.id):
+        raise HTTPException(status_code=403, detail="Access denied")
+    return d
+
+@app.get("/api/rfe-response/drafts/{draft_id}/text", response_class=PlainTextResponse)
+def get_rfe_response_text(draft_id: str, user: UserOut = Depends(get_current_user)):
+    d = rfe_response.get_draft(draft_id)
+    if d is None:
+        raise HTTPException(status_code=404, detail="Draft not found")
+    ws = case_workspace.get_workspace(d["workspace_id"])
+    if ws is None or (ws["applicant_id"] != user.id and ws.get("attorney_id") != user.id):
+        raise HTTPException(status_code=403, detail="Access denied")
+    return PlainTextResponse(content=RFEResponseService.render_text(d))
+
+@app.get("/api/rfe-response/drafts/{draft_id}/review", response_class=PlainTextResponse)
+def get_rfe_response_review(draft_id: str, user: UserOut = Depends(get_current_user)):
+    d = rfe_response.get_draft(draft_id)
+    if d is None:
+        raise HTTPException(status_code=404, detail="Draft not found")
+    ws = case_workspace.get_workspace(d["workspace_id"])
+    if ws is None or (ws["applicant_id"] != user.id and ws.get("attorney_id") != user.id):
+        raise HTTPException(status_code=403, detail="Access denied")
+    return PlainTextResponse(content=RFEResponseService.render_review_text(d))
