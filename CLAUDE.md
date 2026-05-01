@@ -201,8 +201,8 @@ The pitch: "9 hours/week of manual admin work eliminated. $230K/year in recovere
 - [ ] **H-1B electronic registration module** — dedicated workflow for H-1B lottery registration and selection tracking
 - [ ] **SOC code selection engine** — AI analyzes job descriptions to recommend correct SOC codes for labor certifications
 - [ ] **Petition completeness scoring** — 9+ factor algorithm evaluates petition readiness with visual report (fee, specialty occupation, LCA, qualifications, employer-employee relationship, etc.)
-- [ ] **Exhibit list auto-structuring** — AI categorizes, renames, and orders all supporting documents for submission
-- [ ] **Petition packet assembly** — combine all forms, support letters, exhibits, and cover letter into submission-ready packet (PDF or physical mail format)
+- [x] **Exhibit list auto-structuring** — AI categorizes, renames, and orders all supporting documents for submission (PacketAssemblyService.assemble: every uploaded document is auto-tagged with sequential exhibit letters A/B/C/… in the cover letter and TOC; categorization comes from DocumentIntakeService classification)
+- [x] **Petition packet assembly** — combine all forms, support letters, exhibits, and cover letter into submission-ready packet (PDF or physical mail format) (PacketAssemblyService: hand-written PDF 1.4 generator (zero deps) producing real filing-ready PDFs with cover letter, table of contents, populated forms grouped by section, exhibit list, and exhibit tab pages; three output formats: pdf / text / manifest)
 - [ ] **Document Q&A** — upload an RFE, decision, or government notice and chat with it in natural language to extract facts and identify issues
 
 **Deadline & Calendar Management**

@@ -107,6 +107,7 @@ from immigration_compliance.services.case_workspace_service import CaseWorkspace
 from immigration_compliance.services.calendar_sync_service import CalendarSyncService
 from immigration_compliance.services.client_chatbot_service import ClientChatbotService
 from immigration_compliance.services.family_bundle_service import FamilyBundleService
+from immigration_compliance.services.packet_assembly_service import PacketAssemblyService
 
 # Resolve frontend directory
 _root = Path(__file__).resolve().parent.parent.parent.parent
@@ -184,6 +185,7 @@ case_workspace = CaseWorkspaceService(
 calendar_sync = CalendarSyncService(case_workspace=case_workspace)
 client_chatbot = ClientChatbotService(case_workspace=case_workspace)
 family_bundle = FamilyBundleService(case_workspace=case_workspace, intake_engine=intake_engine)
+packet_assembly = PacketAssemblyService(case_workspace=case_workspace, document_intake=document_intake, form_population=form_population)
 
 # Gap Closers — competitive response features
 hris_deep = HRISDeepService()
@@ -2625,3 +2627,73 @@ def list_family_bundle_forms(bundle_id: str, user: UserOut = Depends(get_current
         return family_bundle.list_required_forms_for_bundle(bundle_id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
+
+
+# =============================================
+# Packet Assembly endpoints
+# =============================================
+
+from fastapi.responses import Response  # noqa: E402
+
+class PacketAssembleRequest(BaseModel):
+    workspace_id: str
+    attorney_profile: dict | None = None
+    include_strength_summary: bool = False
+
+@app.post("/api/packets/assemble", status_code=201)
+def assemble_packet(req: PacketAssembleRequest, user: UserOut = Depends(get_current_user)):
+    ws = case_workspace.get_workspace(req.workspace_id)
+    if ws is None:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    if ws["applicant_id"] != user.id and ws.get("attorney_id") != user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    return packet_assembly.assemble(
+        workspace_id=req.workspace_id,
+        attorney_profile=req.attorney_profile,
+        include_strength_summary=req.include_strength_summary,
+    )
+
+@app.get("/api/packets")
+def list_packets(workspace_id: str | None = None, user: UserOut = Depends(get_current_user)):
+    if workspace_id:
+        ws = case_workspace.get_workspace(workspace_id)
+        if ws is None:
+            raise HTTPException(status_code=404, detail="Workspace not found")
+        if ws["applicant_id"] != user.id and ws.get("attorney_id") != user.id:
+            raise HTTPException(status_code=403, detail="Access denied")
+    return packet_assembly.list_packets(workspace_id=workspace_id)
+
+@app.get("/api/packets/{packet_id}")
+def get_packet(packet_id: str, user: UserOut = Depends(get_current_user)):
+    p = packet_assembly.get_packet(packet_id)
+    if p is None:
+        raise HTTPException(status_code=404, detail="Packet not found")
+    ws = case_workspace.get_workspace(p["workspace_id"])
+    if ws is None or (ws["applicant_id"] != user.id and ws.get("attorney_id") != user.id):
+        raise HTTPException(status_code=403, detail="Access denied")
+    return p
+
+@app.get("/api/packets/{packet_id}/text", response_class=PlainTextResponse)
+def get_packet_text(packet_id: str, user: UserOut = Depends(get_current_user)):
+    p = packet_assembly.get_packet(packet_id)
+    if p is None:
+        raise HTTPException(status_code=404, detail="Packet not found")
+    ws = case_workspace.get_workspace(p["workspace_id"])
+    if ws is None or (ws["applicant_id"] != user.id and ws.get("attorney_id") != user.id):
+        raise HTTPException(status_code=403, detail="Access denied")
+    return PlainTextResponse(content=packet_assembly.render_text(p))
+
+@app.get("/api/packets/{packet_id}/pdf")
+def get_packet_pdf(packet_id: str, user: UserOut = Depends(get_current_user)):
+    p = packet_assembly.get_packet(packet_id)
+    if p is None:
+        raise HTTPException(status_code=404, detail="Packet not found")
+    ws = case_workspace.get_workspace(p["workspace_id"])
+    if ws is None or (ws["applicant_id"] != user.id and ws.get("attorney_id") != user.id):
+        raise HTTPException(status_code=403, detail="Access denied")
+    pdf_bytes = packet_assembly.render_pdf(p)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="verom-packet-{packet_id[:8]}.pdf"'},
+    )
