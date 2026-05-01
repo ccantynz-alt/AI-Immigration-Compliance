@@ -125,6 +125,7 @@ from immigration_compliance.services.team_management_service import TeamManageme
 from immigration_compliance.services.lead_management_service import LeadManagementService
 from immigration_compliance.services.consultation_booking_service import ConsultationBookingService
 from immigration_compliance.services.legal_research_service import LegalResearchService
+from immigration_compliance.services.document_management_service import DocumentManagementService
 from immigration_compliance.services.persistent_store_service import PersistentStore, get_default_store
 from immigration_compliance.services.storage_binding import bind_storage
 
@@ -222,6 +223,7 @@ team_management = TeamManagementService(case_workspace=case_workspace)
 lead_management = LeadManagementService(conflict_check=conflict_check)
 consultation_booking = ConsultationBookingService(case_workspace=case_workspace, notification_service=notifications)
 legal_research = LegalResearchService()
+doc_management = DocumentManagementService(document_intake=document_intake)
 
 # Persistent store — reads VEROM_DB_PATH env var (default: verom_state.db). Set
 # VEROM_DISABLE_PERSISTENCE=1 to fall back to in-memory only.
@@ -4430,3 +4432,160 @@ def get_authority_by_id(authority_id: str, user: UserOut = Depends(get_current_u
     if a is None:
         raise HTTPException(status_code=404, detail="Authority not found")
     return a
+
+
+# =============================================
+# Document Management endpoints (case vault with versions)
+# =============================================
+
+class DocEntryRegisterRequest(BaseModel):
+    workspace_id: str
+    title: str
+    category: str
+    document_intake_id: str | None = None
+    version_filename: str = ""
+    version_size_bytes: int = 0
+    tags: list[str] | None = None
+    notes: str = ""
+
+class DocVersionAddRequest(BaseModel):
+    filename: str
+    size_bytes: int = 0
+    comment: str = ""
+    document_intake_id: str | None = None
+
+class DocCommentRequest(BaseModel):
+    body: str
+    version_number: int | None = None
+    visibility: str = "internal"
+
+class DocShareLinkRequest(BaseModel):
+    role: str = "viewer"
+    expires_in_days: int = 7
+
+@app.get("/api/doc-management/folders")
+def list_doc_folders():
+    return DocumentManagementService.list_folders()
+
+@app.post("/api/doc-management/entries", status_code=201)
+def register_doc_entry(req: DocEntryRegisterRequest, user: UserOut = Depends(get_current_user)):
+    try:
+        return doc_management.register_entry(
+            workspace_id=req.workspace_id, title=req.title, category=req.category,
+            document_intake_id=req.document_intake_id,
+            version_filename=req.version_filename, version_size_bytes=req.version_size_bytes,
+            version_uploader_id=user.id, tags=req.tags, notes=req.notes,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+@app.get("/api/doc-management/entries")
+def list_doc_entries(workspace_id: str | None = None, category: str | None = None, tag: str | None = None, user: UserOut = Depends(get_current_user)):
+    return doc_management.list_entries(workspace_id=workspace_id, category=category, tag=tag)
+
+@app.get("/api/doc-management/entries/by-folder/{workspace_id}")
+def list_entries_by_folder(workspace_id: str, user: UserOut = Depends(get_current_user)):
+    return doc_management.list_entries_by_folder(workspace_id)
+
+@app.get("/api/doc-management/entries/{entry_id}")
+def get_doc_entry(entry_id: str, user: UserOut = Depends(get_current_user)):
+    e = doc_management.get_entry(entry_id)
+    if e is None:
+        raise HTTPException(status_code=404, detail="Entry not found")
+    doc_management.log_view(entry_id, actor_id=user.id)
+    return e
+
+@app.post("/api/doc-management/entries/{entry_id}/versions", status_code=201)
+def add_doc_version(entry_id: str, req: DocVersionAddRequest, user: UserOut = Depends(get_current_user)):
+    try:
+        return doc_management.add_version(
+            entry_id, filename=req.filename, size_bytes=req.size_bytes,
+            uploader_id=user.id, comment=req.comment,
+            document_intake_id=req.document_intake_id,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
+@app.get("/api/doc-management/entries/{entry_id}/versions")
+def list_doc_versions(entry_id: str, user: UserOut = Depends(get_current_user)):
+    return doc_management.list_versions(entry_id)
+
+@app.post("/api/doc-management/entries/{entry_id}/pin/{version_number}")
+def pin_doc_version(entry_id: str, version_number: int, user: UserOut = Depends(get_current_user)):
+    try:
+        return doc_management.pin_version(entry_id, version_number, actor_id=user.id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+@app.post("/api/doc-management/entries/{entry_id}/tags/{tag}", status_code=201)
+def add_doc_tag(entry_id: str, tag: str, user: UserOut = Depends(get_current_user)):
+    try:
+        return doc_management.add_tag(entry_id, tag, actor_id=user.id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
+@app.delete("/api/doc-management/entries/{entry_id}/tags/{tag}")
+def remove_doc_tag(entry_id: str, tag: str, user: UserOut = Depends(get_current_user)):
+    try:
+        return doc_management.remove_tag(entry_id, tag, actor_id=user.id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
+@app.get("/api/doc-management/tags")
+def list_tags_in_use(workspace_id: str | None = None, user: UserOut = Depends(get_current_user)):
+    return doc_management.list_tags_in_use(workspace_id=workspace_id)
+
+@app.post("/api/doc-management/entries/{entry_id}/comments", status_code=201)
+def add_doc_comment(entry_id: str, req: DocCommentRequest, user: UserOut = Depends(get_current_user)):
+    try:
+        return doc_management.add_comment(
+            entry_id, body=req.body, author_id=user.id,
+            version_number=req.version_number, visibility=req.visibility,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+@app.get("/api/doc-management/entries/{entry_id}/comments")
+def list_doc_comments(entry_id: str, visibility: str | None = None, user: UserOut = Depends(get_current_user)):
+    return doc_management.list_comments(entry_id, visibility=visibility)
+
+@app.post("/api/doc-management/entries/{entry_id}/share-links", status_code=201)
+def create_doc_share_link(entry_id: str, req: DocShareLinkRequest, user: UserOut = Depends(get_current_user)):
+    try:
+        return doc_management.create_share_link(
+            entry_id, role=req.role, expires_in_days=req.expires_in_days,
+            created_by_user_id=user.id,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+@app.get("/api/doc-management/share/{token}")
+def get_doc_share_link(token: str):
+    """Public — anyone with the token can fetch the share record (entry remains separate)."""
+    link = doc_management.get_share_link(token)
+    if link is None:
+        raise HTTPException(status_code=404, detail="Share link not found or expired")
+    return link
+
+@app.delete("/api/doc-management/share/{token}", status_code=204)
+def revoke_doc_share_link(token: str, user: UserOut = Depends(get_current_user)):
+    if not doc_management.revoke_share_link(token):
+        raise HTTPException(status_code=404, detail="Share link not found")
+
+@app.get("/api/doc-management/entries/{entry_id}/activity")
+def get_doc_activity(entry_id: str, limit: int = 100, user: UserOut = Depends(get_current_user)):
+    return doc_management.get_activity_log(entry_id, limit=limit)
+
+@app.post("/api/doc-management/entries/{entry_id}/archive")
+def archive_doc_entry(entry_id: str, user: UserOut = Depends(get_current_user)):
+    try:
+        return doc_management.archive_entry(entry_id, actor_id=user.id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
+@app.post("/api/doc-management/entries/{entry_id}/restore")
+def restore_doc_entry(entry_id: str, user: UserOut = Depends(get_current_user)):
+    try:
+        return doc_management.restore_entry(entry_id, actor_id=user.id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e

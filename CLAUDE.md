@@ -187,7 +187,7 @@ The pitch: "9 hours/week of manual admin work eliminated. $230K/year in recovere
 
 **Case Management**
 - [x] Case dashboard — all cases, statuses, next actions in one view (CaseWorkspaceService + /case page: unified system of record aggregating intake, documents, forms, attorney match, conflict checks, RFE risk, deadlines, notes, timeline; single `/api/case-workspaces/{id}/snapshot` returns the full state)
-- [ ] Document management (organize, tag, version control per case)
+- [x] Document management (organize, tag, version control per case) (DocumentManagementService: 11-folder taxonomy (Identity, Sponsor, Education, Financial, Civil, Medical, Background, Evidentiary, Supporting, Internal, Correspondence); per-entry version stack with pinning; tag index for cross-folder lookup; comments with internal/client_visible visibility; share links with role + expiry; full activity log per entry covering view/download/tag/comment/share events; archive/restore; built on top of DocumentIntakeService)
 - [x] Case notes and internal memos (CaseWorkspaceService.add_note with internal/client_visible visibility)
 - [x] Case timeline/history view (CaseWorkspaceService timeline records 17 event kinds — case_created, intake_started/completed, document_uploaded, forms_populated, attorney_assigned, conflict_check_run, rfe_risk_assessed, case_filed, rfe_received/responded, decision_received, deadline_added, note_added, status_changed, milestone_reached)
 - [x] **RFE tracking and response tools** — track RFE deadlines, draft responses with AI assistance (CaseWorkspaceService.add_rfe_response_deadline auto-computes 87-day response window; RFEResponseService produces full structured drafts in seconds)
