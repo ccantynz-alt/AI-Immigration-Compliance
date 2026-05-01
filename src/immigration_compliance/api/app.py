@@ -120,6 +120,7 @@ from immigration_compliance.services.translation_service import TranslationServi
 from immigration_compliance.services.time_tracking_service import TimeTrackingService
 from immigration_compliance.services.trust_accounting_service import TrustAccountingService
 from immigration_compliance.services.efiling_proxy_service import EFilingProxyService
+from immigration_compliance.services.notification_service import NotificationService
 from immigration_compliance.services.persistent_store_service import PersistentStore, get_default_store
 from immigration_compliance.services.storage_binding import bind_storage
 
@@ -212,6 +213,7 @@ translation_service = TranslationService()
 time_tracking = TimeTrackingService(case_workspace=case_workspace)
 trust_accounting = TrustAccountingService()
 efiling_proxy = EFilingProxyService(case_workspace=case_workspace, form_population=form_population)
+notifications = NotificationService()
 
 # Persistent store — reads VEROM_DB_PATH env var (default: verom_state.db). Set
 # VEROM_DISABLE_PERSISTENCE=1 to fall back to in-memory only.
@@ -3731,3 +3733,119 @@ def get_efiling_submission(submission_id: str, user: UserOut = Depends(require_r
     if s.get("attorney_id") and s["attorney_id"] != user.id:
         raise HTTPException(status_code=403, detail="Access denied")
     return s
+
+
+# =============================================
+# Notification + Webhook endpoints
+# =============================================
+
+class NotificationPrefsRequest(BaseModel):
+    preferences: dict[str, list[str]]
+
+class NotificationEmitRequest(BaseModel):
+    event_type: str
+    recipient_user_id: str
+    title: str
+    body: str
+    metadata: dict | None = None
+    recipient_email: str | None = None
+    recipient_phone: str | None = None
+    force_channels: list[str] | None = None
+
+class WebhookRegisterRequest(BaseModel):
+    firm_id: str
+    url: str
+    event_types: list[str]
+    description: str = ""
+
+@app.get("/api/notifications/event-types")
+def list_notification_event_types():
+    return NotificationService.list_event_types()
+
+@app.get("/api/notifications/channels")
+def list_notification_channels():
+    return NotificationService.list_channels()
+
+@app.put("/api/notifications/preferences")
+def set_my_notification_preferences(req: NotificationPrefsRequest, user: UserOut = Depends(get_current_user)):
+    try:
+        return notifications.set_user_preferences(user.id, req.preferences)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+@app.get("/api/notifications/preferences")
+def get_my_notification_preferences(user: UserOut = Depends(get_current_user)):
+    return notifications.get_user_preferences(user.id)
+
+@app.post("/api/notifications/emit", status_code=201)
+def emit_notification(req: NotificationEmitRequest, user: UserOut = Depends(get_current_user)):
+    """Internal endpoint — typically called by other services. Restricted
+    to the calling user emitting to themselves unless they have admin role."""
+    if req.recipient_user_id != user.id:
+        # Tighten role check: only attorneys/admins can target others
+        if user.role not in (UserRole.ATTORNEY,):
+            raise HTTPException(status_code=403, detail="Cannot emit notifications to other users")
+    try:
+        return notifications.emit(
+            event_type=req.event_type,
+            recipient_user_id=req.recipient_user_id,
+            title=req.title,
+            body=req.body,
+            metadata=req.metadata,
+            recipient_email=req.recipient_email,
+            recipient_phone=req.recipient_phone,
+            force_channels=req.force_channels,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+@app.get("/api/notifications/inbox")
+def list_my_inbox(unread_only: bool = False, limit: int = 50, user: UserOut = Depends(get_current_user)):
+    return notifications.list_for_user(user.id, unread_only=unread_only, limit=limit)
+
+@app.get("/api/notifications/unread-count")
+def get_my_unread_count(user: UserOut = Depends(get_current_user)):
+    return {"unread_count": notifications.get_unread_count(user.id)}
+
+@app.post("/api/notifications/{notification_id}/read")
+def mark_notification_read(notification_id: str, user: UserOut = Depends(get_current_user)):
+    try:
+        return notifications.mark_read(notification_id, user.id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
+@app.post("/api/notifications/mark-all-read")
+def mark_all_my_notifications_read(user: UserOut = Depends(get_current_user)):
+    return {"marked_read": notifications.mark_all_read(user.id)}
+
+# ----- Webhooks -----
+
+@app.post("/api/webhooks", status_code=201)
+def register_webhook(req: WebhookRegisterRequest, user: UserOut = Depends(require_role(UserRole.ATTORNEY))):
+    try:
+        return notifications.register_webhook(
+            firm_id=req.firm_id, url=req.url,
+            event_types=req.event_types, description=req.description,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+@app.get("/api/webhooks")
+def list_webhooks(firm_id: str | None = None, active_only: bool = True, user: UserOut = Depends(require_role(UserRole.ATTORNEY))):
+    return notifications.list_webhooks(firm_id=firm_id, active_only=active_only)
+
+@app.delete("/api/webhooks/{webhook_id}", status_code=204)
+def deactivate_webhook(webhook_id: str, user: UserOut = Depends(require_role(UserRole.ATTORNEY))):
+    if notifications.deactivate_webhook(webhook_id) is None:
+        raise HTTPException(status_code=404, detail="Webhook not found")
+
+@app.post("/api/webhooks/{webhook_id}/rotate-secret")
+def rotate_webhook_secret(webhook_id: str, user: UserOut = Depends(require_role(UserRole.ATTORNEY))):
+    try:
+        return notifications.rotate_webhook_secret(webhook_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
+@app.get("/api/webhooks/{webhook_id}/deliveries")
+def get_webhook_deliveries(webhook_id: str, limit: int = 100, user: UserOut = Depends(require_role(UserRole.ATTORNEY))):
+    return notifications.get_webhook_delivery_log(webhook_id=webhook_id, limit=limit)

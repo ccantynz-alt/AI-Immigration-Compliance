@@ -344,7 +344,7 @@ The pitch: "9 hours/week of manual admin work eliminated. $230K/year in recovere
 
 **Mobile App** (attorneys live on their phones)
 - [ ] **Native iOS + Android app** — not just responsive web, a real app
-- [ ] **Push notifications** — deadlines, case updates, new leads, client messages, government status changes
+- [x] **Push notifications** — deadlines, case updates, new leads, client messages, government status changes (NotificationService — multi-channel: in_app + email + sms + push + webhook; 16 event types covering case lifecycle, documents, communication, regulatory, billing, compliance; per-user preferences override per-event-type defaults; production swap-in for real push provider via dispatcher boundary)
 - [ ] **Mobile document scanning** — camera → OCR → AI classification → filed to correct case
 - [ ] **Quick case status checks** — swipe through cases, see status at a glance
 - [ ] **Mobile client communication** — respond to client messages on the go
@@ -481,8 +481,8 @@ Every verification step and safety check exists to protect everyone — attorney
 - [ ] Template library endpoints
 - [x] Time tracking endpoints (15 endpoints under /api/time-tracking/* covering activity types, billing rate, timers (start/stop/active), entries (CRUD), workspace + attorney summaries, invoice generation + lookup)
 - [ ] Team management / task assignment endpoints
-- [ ] Mobile push notification service
-- [ ] Webhook system for real-time integrations
+- [x] Mobile push notification service (NotificationService.emit dispatches to push channel via pluggable dispatcher; default stub for dev/test)
+- [x] Webhook system for real-time integrations (NotificationService outbound webhooks with HMAC-SHA256 signature in header; secrets rotateable per webhook; delivery log per webhook; subscribe to specific event types per firm)
 - [ ] Data migration / import endpoints (competitor platforms)
 - [x] Audit log system (PersistentStore — SQLite-backed; see Activity audit log entry)
 
