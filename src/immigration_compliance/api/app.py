@@ -113,6 +113,7 @@ from immigration_compliance.services.migration_importer_service import Migration
 from immigration_compliance.services.petition_letter_service import PetitionLetterService
 from immigration_compliance.services.rfe_response_service import RFEResponseService
 from immigration_compliance.services.persistent_store_service import PersistentStore, get_default_store
+from immigration_compliance.services.storage_binding import bind_storage
 
 # Resolve frontend directory
 _root = Path(__file__).resolve().parent.parent.parent.parent
@@ -205,6 +206,21 @@ if _os.environ.get("VEROM_DISABLE_PERSISTENCE") not in ("1", "true", "yes"):
         persistent_store = get_default_store()
     except Exception:
         persistent_store = None
+
+# Bind the persistent store to every service so their state survives restarts.
+# Each call: loads previously-saved state then wraps mutating methods with
+# debounced saves. Service callers never see this — it's transparent.
+if persistent_store is not None:
+    for _svc in (
+        intake_engine, document_intake, form_population, conflict_check,
+        onboarding, family_bundle, client_chatbot, packet_assembly,
+        regulatory_impact_engine, migration_importer, petition_letter,
+        rfe_response, attorney_match, calendar_sync, case_workspace,
+    ):
+        try:
+            bind_storage(_svc, persistent_store)
+        except Exception:
+            pass
 
 # Gap Closers — competitive response features
 hris_deep = HRISDeepService()
