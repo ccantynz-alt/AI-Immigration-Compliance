@@ -104,6 +104,7 @@ from immigration_compliance.services.document_intake_service import DocumentInta
 from immigration_compliance.services.attorney_match_service import AttorneyMatchService
 from immigration_compliance.services.form_population_service import FormPopulationService
 from immigration_compliance.services.case_workspace_service import CaseWorkspaceService
+from immigration_compliance.services.calendar_sync_service import CalendarSyncService
 
 # Resolve frontend directory
 _root = Path(__file__).resolve().parent.parent.parent.parent
@@ -178,6 +179,7 @@ case_workspace = CaseWorkspaceService(
     conflict_check=conflict_check,
     rfe_predictor=rfe_predictor,
 )
+calendar_sync = CalendarSyncService(case_workspace=case_workspace)
 
 # Gap Closers — competitive response features
 hris_deep = HRISDeepService()
@@ -2305,3 +2307,120 @@ def record_workspace_rfe(ws_id: str, req: WorkspaceRFEReceivedRequest, user: Use
         return case_workspace.add_rfe_response_deadline(ws_id, req.rfe_received_date, req.response_window_days)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+# =============================================
+# Calendar Sync endpoints
+# =============================================
+
+from fastapi.responses import PlainTextResponse  # noqa: E402
+
+class CalendarSubscriptionRequest(BaseModel):
+    scope: str = "applicant"
+    workspace_id: str | None = None
+    label: str = ""
+
+class CalendarOAuthConnectRequest(BaseModel):
+    provider: str
+    oauth_payload: dict
+
+class CalendarPushRequest(BaseModel):
+    workspace_id: str
+
+@app.get("/api/calendar/providers")
+def list_calendar_providers():
+    return CalendarSyncService.list_supported_providers()
+
+@app.post("/api/calendar/subscriptions", status_code=201)
+def create_calendar_subscription(req: CalendarSubscriptionRequest, user: UserOut = Depends(get_current_user)):
+    try:
+        return calendar_sync.create_subscription(
+            user_id=user.id,
+            scope=req.scope,
+            workspace_id=req.workspace_id,
+            label=req.label,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+@app.get("/api/calendar/subscriptions")
+def list_calendar_subscriptions(user: UserOut = Depends(get_current_user)):
+    return calendar_sync.list_subscriptions(user_id=user.id)
+
+@app.delete("/api/calendar/subscriptions/{token}", status_code=204)
+def revoke_calendar_subscription(token: str, user: UserOut = Depends(get_current_user)):
+    sub = calendar_sync.get_subscription(token)
+    if sub is None or sub["user_id"] != user.id:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+    calendar_sync.revoke_subscription(token)
+
+@app.post("/api/calendar/subscriptions/{token}/rotate")
+def rotate_calendar_subscription(token: str, user: UserOut = Depends(get_current_user)):
+    sub = calendar_sync.get_subscription(token)
+    if sub is None or sub["user_id"] != user.id:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+    new = calendar_sync.rotate_subscription(token)
+    if new is None:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+    return new
+
+@app.get("/api/calendar/feed/{token}.ics", response_class=PlainTextResponse)
+def get_calendar_feed(token: str):
+    """Public ICS endpoint — calendar clients subscribe to this URL.
+    Authentication is via the opaque token in the URL."""
+    ics = calendar_sync.render_feed_for_token(token)
+    if ics is None:
+        raise HTTPException(status_code=404, detail="Subscription not found or revoked")
+    return PlainTextResponse(content=ics, media_type="text/calendar; charset=utf-8")
+
+@app.get("/api/calendar/workspace/{ws_id}.ics", response_class=PlainTextResponse)
+def get_workspace_calendar_snapshot(ws_id: str, user: UserOut = Depends(get_current_user)):
+    """One-shot ICS download for a single workspace (auth required, no subscription needed)."""
+    ws = case_workspace.get_workspace(ws_id)
+    if ws is None:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    if ws["applicant_id"] != user.id and ws.get("attorney_id") != user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    deadlines = case_workspace.list_deadlines(ws_id, include_completed=False)
+    ics = calendar_sync.render_workspace_calendar(ws, deadlines)
+    return PlainTextResponse(content=ics, media_type="text/calendar; charset=utf-8")
+
+@app.post("/api/calendar/connections", status_code=201)
+def connect_calendar_provider(req: CalendarOAuthConnectRequest, user: UserOut = Depends(get_current_user)):
+    try:
+        return calendar_sync.connect_provider(user.id, req.provider, req.oauth_payload)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+@app.get("/api/calendar/connections")
+def list_calendar_connections(user: UserOut = Depends(get_current_user)):
+    return calendar_sync.list_connections(user_id=user.id)
+
+@app.delete("/api/calendar/connections/{connection_id}", status_code=204)
+def disconnect_calendar_connection(connection_id: str, user: UserOut = Depends(get_current_user)):
+    conns = [c for c in calendar_sync.list_connections(user_id=user.id) if c["id"] == connection_id]
+    if not conns:
+        raise HTTPException(status_code=404, detail="Connection not found")
+    calendar_sync.disconnect(connection_id)
+
+@app.post("/api/calendar/connections/{connection_id}/push")
+def push_to_calendar(connection_id: str, req: CalendarPushRequest, user: UserOut = Depends(get_current_user)):
+    conns = [c for c in calendar_sync.list_connections(user_id=user.id) if c["id"] == connection_id]
+    if not conns:
+        raise HTTPException(status_code=404, detail="Connection not found")
+    ws = case_workspace.get_workspace(req.workspace_id)
+    if ws is None:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    if ws["applicant_id"] != user.id and ws.get("attorney_id") != user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    try:
+        return calendar_sync.push_workspace_to_calendar(connection_id, req.workspace_id)
+    except (ValueError, RuntimeError) as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+@app.get("/api/calendar/connections/{connection_id}/log")
+def get_calendar_push_log(connection_id: str, user: UserOut = Depends(get_current_user)):
+    conns = [c for c in calendar_sync.list_connections(user_id=user.id) if c["id"] == connection_id]
+    if not conns:
+        raise HTTPException(status_code=404, detail="Connection not found")
+    return calendar_sync.get_push_log(connection_id=connection_id)

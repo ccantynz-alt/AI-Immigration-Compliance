@@ -206,9 +206,9 @@ The pitch: "9 hours/week of manual admin work eliminated. $230K/year in recovere
 - [ ] **Document Q&A** — upload an RFE, decision, or government notice and chat with it in natural language to extract facts and identify issues
 
 **Deadline & Calendar Management**
-- [x] **Automated deadline tracking** — every filing window, renewal, RFE deadline tracked automatically
-- [x] **Smart calendar integration** — sync to Google Calendar, Outlook, Apple Calendar
-- [x] **Deadline calculation engine** — auto-calculates deadlines from receipt dates, priority dates, filing requirements
+- [x] **Automated deadline tracking** — every filing window, renewal, RFE deadline tracked automatically (CaseWorkspaceService + auto_compute_deadlines_from_filing for I-129/I-130/I-485/I-765/I-131; add_rfe_response_deadline auto-sets 87-day window)
+- [x] **Smart calendar integration** — sync to Google Calendar, Outlook, Apple Calendar (CalendarSyncService: RFC 5545 ICS feed per user/workspace with 1-day + 7-day VALARM reminders; opaque subscription tokens with rotate/revoke; OAuth connection registry for direct push to Google/Outlook with queued push log)
+- [x] **Deadline calculation engine** — auto-calculates deadlines from receipt dates, priority dates, filing requirements (per-form windows in CaseWorkspaceService.auto_compute_deadlines_from_filing)
 - [x] **Team-wide deadline visibility** — paralegals, associates, and partners see all deadlines
 - [x] **Escalation alerts** — deadlines approaching without action trigger escalating notifications
 
@@ -246,7 +246,7 @@ The pitch: "9 hours/week of manual admin work eliminated. $230K/year in recovere
 - [x] **Cloud storage sync** — Dropbox, Google Drive, OneDrive, Box
 - [x] **E-signature integration** — DocuSign, Adobe Sign for G-28, retainer agreements
 - [x] **Accounting/billing integration** — QuickBooks, Xero, FreshBooks
-- [x] **Calendar sync** — Google Calendar, Outlook, iCal
+- [x] **Calendar sync** — Google Calendar, Outlook, iCal (CalendarSyncService — see Deadline & Calendar Management)
 - [x] **Zapier/Make integration** — connect to 5000+ apps for custom workflows
 - [x] **API access** — firms with custom tools can integrate programmatically
 
