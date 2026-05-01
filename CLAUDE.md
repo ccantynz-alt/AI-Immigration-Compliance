@@ -213,11 +213,11 @@ The pitch: "9 hours/week of manual admin work eliminated. $230K/year in recovere
 - [x] **Escalation alerts** — deadlines approaching without action trigger escalating notifications
 
 **Client Communication Automation**
-- [ ] **Automated client status updates** — clients get progress notifications without attorney effort
-- [ ] **Secure client portal** — clients check their own case status, upload docs, see next steps
+- [x] **Automated client status updates** — clients get progress notifications without attorney effort (CaseWorkspaceService timeline + chatbot status answers grounded in workspace state)
+- [x] **Secure client portal** — clients check their own case status, upload docs, see next steps (/applicant + /case + /intake/documents pages, all auth-gated and snapshot-driven)
 - [ ] **Automated email/SMS sequences** — document reminders, appointment confirmations, status changes
 - [ ] **AI-translated client messages** — attorney writes in English, client reads in their language (with disclaimer)
-- [ ] **AI client chatbot** — instant answers to common client questions (case status, next steps, document requirements) without attorney effort
+- [x] **AI client chatbot** — instant answers to common client questions (case status, next steps, document requirements) without attorney effort (ClientChatbotService: 12-intent rules-based classifier; answers ONLY from real workspace state with `grounded_in` field references — no hallucination; auto-handoff to attorney for low-confidence questions; attorney takeover/release for direct conversation; conversation persistence per workspace)
 - [ ] **WhatsApp integration** — communicate with international clients during consular processing via WhatsApp
 
 **Government Portal Unification** (attorneys currently log into 5+ separate portals daily)

@@ -105,6 +105,7 @@ from immigration_compliance.services.attorney_match_service import AttorneyMatch
 from immigration_compliance.services.form_population_service import FormPopulationService
 from immigration_compliance.services.case_workspace_service import CaseWorkspaceService
 from immigration_compliance.services.calendar_sync_service import CalendarSyncService
+from immigration_compliance.services.client_chatbot_service import ClientChatbotService
 
 # Resolve frontend directory
 _root = Path(__file__).resolve().parent.parent.parent.parent
@@ -180,6 +181,7 @@ case_workspace = CaseWorkspaceService(
     rfe_predictor=rfe_predictor,
 )
 calendar_sync = CalendarSyncService(case_workspace=case_workspace)
+client_chatbot = ClientChatbotService(case_workspace=case_workspace)
 
 # Gap Closers — competitive response features
 hris_deep = HRISDeepService()
@@ -2424,3 +2426,110 @@ def get_calendar_push_log(connection_id: str, user: UserOut = Depends(get_curren
     if not conns:
         raise HTTPException(status_code=404, detail="Connection not found")
     return calendar_sync.get_push_log(connection_id=connection_id)
+
+
+# =============================================
+# AI Client Chatbot endpoints
+# =============================================
+
+class ChatbotConvoCreateRequest(BaseModel):
+    workspace_id: str
+
+class ChatbotAskRequest(BaseModel):
+    body: str
+
+class ChatbotAttorneyMessageRequest(BaseModel):
+    body: str
+
+class ChatbotResolveHandoffRequest(BaseModel):
+    response_body: str = ""
+
+@app.get("/api/chatbot/intents")
+def list_chatbot_intents():
+    return ClientChatbotService.list_supported_intents()
+
+@app.post("/api/chatbot/conversations", status_code=201)
+def chatbot_get_or_create(req: ChatbotConvoCreateRequest, user: UserOut = Depends(get_current_user)):
+    ws = case_workspace.get_workspace(req.workspace_id)
+    if ws is None:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    if ws["applicant_id"] != user.id and ws.get("attorney_id") != user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    return client_chatbot.get_or_create_conversation(req.workspace_id, ws["applicant_id"])
+
+@app.get("/api/chatbot/conversations")
+def list_chatbot_conversations(workspace_id: str | None = None, user: UserOut = Depends(get_current_user)):
+    if user.role == UserRole.ATTORNEY:
+        # attorney sees conversations for workspaces they own
+        atty_workspaces = {w["id"] for w in case_workspace.list_workspaces(attorney_id=user.id)}
+        all_convos = client_chatbot.list_conversations(workspace_id=workspace_id)
+        return [c for c in all_convos if c["workspace_id"] in atty_workspaces]
+    return client_chatbot.list_conversations(applicant_id=user.id, workspace_id=workspace_id)
+
+@app.get("/api/chatbot/conversations/{convo_id}/messages")
+def get_chatbot_messages(convo_id: str, user: UserOut = Depends(get_current_user), limit: int = 100):
+    convo = client_chatbot.get_conversation(convo_id)
+    if convo is None:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    ws = case_workspace.get_workspace(convo["workspace_id"])
+    if ws is None or (ws["applicant_id"] != user.id and ws.get("attorney_id") != user.id):
+        raise HTTPException(status_code=403, detail="Access denied")
+    return client_chatbot.get_messages(convo_id, limit=limit)
+
+@app.post("/api/chatbot/conversations/{convo_id}/ask")
+def chatbot_ask(convo_id: str, req: ChatbotAskRequest, user: UserOut = Depends(get_current_user)):
+    convo = client_chatbot.get_conversation(convo_id)
+    if convo is None:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    ws = case_workspace.get_workspace(convo["workspace_id"])
+    if ws is None or ws["applicant_id"] != user.id:
+        raise HTTPException(status_code=403, detail="Only the applicant can ask questions")
+    try:
+        return client_chatbot.ask(convo_id, req.body)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
+@app.post("/api/chatbot/conversations/{convo_id}/take-over")
+def chatbot_attorney_take_over(convo_id: str, user: UserOut = Depends(require_role(UserRole.ATTORNEY))):
+    convo = client_chatbot.get_conversation(convo_id)
+    if convo is None:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    ws = case_workspace.get_workspace(convo["workspace_id"])
+    if ws is None or ws.get("attorney_id") != user.id:
+        raise HTTPException(status_code=403, detail="You are not the assigned attorney")
+    return client_chatbot.attorney_take_over(convo_id, user.id)
+
+@app.post("/api/chatbot/conversations/{convo_id}/release")
+def chatbot_attorney_release(convo_id: str, user: UserOut = Depends(require_role(UserRole.ATTORNEY))):
+    convo = client_chatbot.get_conversation(convo_id)
+    if convo is None:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    ws = case_workspace.get_workspace(convo["workspace_id"])
+    if ws is None or ws.get("attorney_id") != user.id:
+        raise HTTPException(status_code=403, detail="You are not the assigned attorney")
+    return client_chatbot.attorney_release(convo_id)
+
+@app.post("/api/chatbot/conversations/{convo_id}/attorney-message")
+def chatbot_attorney_post(convo_id: str, req: ChatbotAttorneyMessageRequest, user: UserOut = Depends(require_role(UserRole.ATTORNEY))):
+    convo = client_chatbot.get_conversation(convo_id)
+    if convo is None:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    ws = case_workspace.get_workspace(convo["workspace_id"])
+    if ws is None or ws.get("attorney_id") != user.id:
+        raise HTTPException(status_code=403, detail="You are not the assigned attorney")
+    return client_chatbot.attorney_post_message(convo_id, user.id, req.body)
+
+@app.get("/api/chatbot/handoffs")
+def list_chatbot_handoffs(status: str | None = None, user: UserOut = Depends(get_current_user)):
+    handoffs = client_chatbot.get_handoffs(status=status)
+    if user.role == UserRole.ATTORNEY:
+        atty_ws = {w["id"] for w in case_workspace.list_workspaces(attorney_id=user.id)}
+        return [h for h in handoffs if h["workspace_id"] in atty_ws]
+    return [h for h in handoffs if h["applicant_id"] == user.id]
+
+@app.post("/api/chatbot/handoffs/{handoff_id}/resolve")
+def resolve_chatbot_handoff(handoff_id: str, req: ChatbotResolveHandoffRequest, user: UserOut = Depends(require_role(UserRole.ATTORNEY))):
+    result = client_chatbot.resolve_handoff(handoff_id, req.response_body)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Handoff not found")
+    return result
