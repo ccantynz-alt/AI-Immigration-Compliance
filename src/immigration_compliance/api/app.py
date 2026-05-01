@@ -117,6 +117,7 @@ from immigration_compliance.services.completeness_scorer_service import Complete
 from immigration_compliance.services.soc_code_service import SocCodeService
 from immigration_compliance.services.document_qa_service import DocumentQAService
 from immigration_compliance.services.translation_service import TranslationService
+from immigration_compliance.services.time_tracking_service import TimeTrackingService
 from immigration_compliance.services.persistent_store_service import PersistentStore, get_default_store
 from immigration_compliance.services.storage_binding import bind_storage
 
@@ -206,6 +207,7 @@ completeness_scorer = CompletenessScorerService(case_workspace=case_workspace, i
 soc_code_service = SocCodeService()
 document_qa = DocumentQAService()
 translation_service = TranslationService()
+time_tracking = TimeTrackingService(case_workspace=case_workspace)
 
 # Persistent store — reads VEROM_DB_PATH env var (default: verom_state.db). Set
 # VEROM_DISABLE_PERSISTENCE=1 to fall back to in-memory only.
@@ -3379,3 +3381,145 @@ def translate_message(req: TranslateMessageRequest):
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+# =============================================
+# Time Tracking endpoints
+# =============================================
+
+class TimerStartRequest(BaseModel):
+    workspace_id: str | None = None
+    activity_type: str = "other"
+    description: str = ""
+
+class TimerStopRequest(BaseModel):
+    description_override: str | None = None
+
+class TimeEntryRequest(BaseModel):
+    minutes: float
+    activity_type: str = "other"
+    workspace_id: str | None = None
+    description: str = ""
+    billable_override: bool | None = None
+    entry_date: str | None = None
+
+class BillingRateRequest(BaseModel):
+    rate_per_hour: float
+    currency: str = "USD"
+
+@app.get("/api/time-tracking/activity-types")
+def list_time_activity_types():
+    return TimeTrackingService.list_activity_types()
+
+@app.post("/api/time-tracking/billing-rate")
+def set_my_billing_rate(req: BillingRateRequest, user: UserOut = Depends(require_role(UserRole.ATTORNEY))):
+    try:
+        return time_tracking.set_billing_rate(user.id, req.rate_per_hour, req.currency)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+@app.get("/api/time-tracking/billing-rate")
+def get_my_billing_rate(user: UserOut = Depends(require_role(UserRole.ATTORNEY))):
+    rate = time_tracking.get_billing_rate(user.id)
+    if rate is None:
+        return {"rate_per_hour": None}
+    return rate
+
+@app.post("/api/time-tracking/timers/start")
+def start_timer(req: TimerStartRequest, user: UserOut = Depends(require_role(UserRole.ATTORNEY))):
+    try:
+        return time_tracking.start_timer(
+            attorney_id=user.id,
+            workspace_id=req.workspace_id,
+            activity_type=req.activity_type,
+            description=req.description,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+@app.post("/api/time-tracking/timers/{timer_id}/stop")
+def stop_timer(timer_id: str, req: TimerStopRequest | None = None, user: UserOut = Depends(require_role(UserRole.ATTORNEY))):
+    desc = req.description_override if req else None
+    try:
+        return time_tracking.stop_timer(timer_id, description_override=desc)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
+@app.get("/api/time-tracking/timers/active")
+def get_active_timer(user: UserOut = Depends(require_role(UserRole.ATTORNEY))):
+    t = time_tracking.get_active_timer(user.id)
+    return t or {"is_running": False}
+
+@app.post("/api/time-tracking/entries", status_code=201)
+def add_time_entry(req: TimeEntryRequest, user: UserOut = Depends(require_role(UserRole.ATTORNEY))):
+    try:
+        return time_tracking.add_entry(
+            attorney_id=user.id,
+            minutes=req.minutes,
+            activity_type=req.activity_type,
+            workspace_id=req.workspace_id,
+            description=req.description,
+            billable_override=req.billable_override,
+            entry_date=req.entry_date,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+@app.get("/api/time-tracking/entries")
+def list_time_entries(
+    workspace_id: str | None = None, billable: bool | None = None,
+    since: str | None = None, until: str | None = None,
+    user: UserOut = Depends(require_role(UserRole.ATTORNEY)),
+):
+    return time_tracking.list_entries(
+        attorney_id=user.id, workspace_id=workspace_id,
+        billable=billable, since=since, until=until,
+    )
+
+@app.patch("/api/time-tracking/entries/{entry_id}")
+def update_time_entry(entry_id: str, req: TimeEntryRequest, user: UserOut = Depends(require_role(UserRole.ATTORNEY))):
+    try:
+        return time_tracking.update_entry(
+            entry_id=entry_id,
+            minutes=req.minutes,
+            description=req.description or None,
+            billable=req.billable_override,
+            activity_type=req.activity_type if req.activity_type != "other" else None,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
+@app.delete("/api/time-tracking/entries/{entry_id}", status_code=204)
+def delete_time_entry(entry_id: str, user: UserOut = Depends(require_role(UserRole.ATTORNEY))):
+    if not time_tracking.delete_entry(entry_id):
+        raise HTTPException(status_code=404, detail="Entry not found")
+
+@app.get("/api/time-tracking/workspace-summary/{workspace_id}")
+def get_workspace_time_summary(workspace_id: str, user: UserOut = Depends(get_current_user)):
+    ws = case_workspace.get_workspace(workspace_id)
+    if ws is None:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    if ws["applicant_id"] != user.id and ws.get("attorney_id") != user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    return time_tracking.workspace_summary(workspace_id)
+
+@app.get("/api/time-tracking/attorney-summary")
+def get_attorney_time_summary(since: str | None = None, until: str | None = None, user: UserOut = Depends(require_role(UserRole.ATTORNEY))):
+    return time_tracking.attorney_summary(user.id, since=since, until=until)
+
+@app.post("/api/time-tracking/invoices", status_code=201)
+def generate_invoice(workspace_id: str, since: str | None = None, until: str | None = None, user: UserOut = Depends(require_role(UserRole.ATTORNEY))):
+    return time_tracking.generate_invoice(workspace_id=workspace_id, since=since, until=until, attorney_id=user.id)
+
+@app.get("/api/time-tracking/invoices")
+def list_my_invoices(workspace_id: str | None = None, user: UserOut = Depends(require_role(UserRole.ATTORNEY))):
+    return time_tracking.list_invoices(workspace_id=workspace_id, attorney_id=user.id)
+
+@app.get("/api/time-tracking/invoices/{invoice_id}")
+def get_invoice(invoice_id: str, user: UserOut = Depends(require_role(UserRole.ATTORNEY))):
+    inv = time_tracking.get_invoice(invoice_id)
+    if inv is None:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    if inv.get("attorney_id") and inv["attorney_id"] != user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    return inv

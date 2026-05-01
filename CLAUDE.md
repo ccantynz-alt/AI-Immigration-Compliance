@@ -291,9 +291,9 @@ The pitch: "9 hours/week of manual admin work eliminated. $230K/year in recovere
 - [ ] **Payment plan management** — recurring billing with automatic trust compliance tracking
 - [ ] **LawPay / Stripe Connect integration** — bar-compliant payment processing
 - [ ] **Government filing fee tracking** — track USCIS fees paid vs attorney fees vs costs advanced
-- [ ] **Time tracking** — start/stop timers on case activities, auto-capture time in forms/portals
-- [ ] **Billable vs non-billable categorization** — distinguish between billable work and admin overhead
-- [ ] **Invoice generation** — create professional invoices from time entries and flat fees
+- [x] **Time tracking** — start/stop timers on case activities, auto-capture time in forms/portals (TimeTrackingService: live timer with one-active-per-attorney enforcement; auto-stops on new timer start; 21 activity types covering full immigration workflow; auto-log hooks for platform actions like form_drafting and rfe_response_drafting)
+- [x] **Billable vs non-billable categorization** — distinguish between billable work and admin overhead (per-activity billable defaults plus per-entry billable_override; case_administration/internal_meeting/training default to non-billable; summaries surface billable_hours separately from total)
+- [x] **Invoice generation** — create professional invoices from time entries and flat fees (TimeTrackingService.generate_invoice produces draft invoices filtered to billable entries with per-activity breakdown, subtotal, currency, and date range)
 - [ ] **Milestone billing** — bill by case phase (filing, RFE response, approval), not just hourly or flat
 - [ ] **QR code invoice payments** — clients scan and pay instantly from their phone
 - [ ] **Retainer management** — track retainer balances, auto-notify when running low
@@ -479,7 +479,7 @@ Every verification step and safety check exists to protect everyone — attorney
 - [ ] Government e-filing proxy endpoints (USCIS, DOL FLAG, EOIR ECAS)
 - [x] Conflict check endpoints (POST /api/conflict-check/check, ethics walls, audit log)
 - [ ] Template library endpoints
-- [ ] Time tracking endpoints
+- [x] Time tracking endpoints (15 endpoints under /api/time-tracking/* covering activity types, billing rate, timers (start/stop/active), entries (CRUD), workspace + attorney summaries, invoice generation + lookup)
 - [ ] Team management / task assignment endpoints
 - [ ] Mobile push notification service
 - [ ] Webhook system for real-time integrations
