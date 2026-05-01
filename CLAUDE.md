@@ -180,7 +180,7 @@ The pitch: "9 hours/week of manual admin work eliminated. $230K/year in recovere
 - [x] **Document collection portal** — clients upload docs via secure link, AI validates completeness (DocumentIntakeService + /intake/documents page: drag-drop upload, classification, quality + validation, real-time completeness vs the intake checklist, extracted-data conflict detection)
 - [ ] **AI document scanning & OCR** — scan physical documents, passports, I-94s, approval notices
 - [x] **Photo/document quality checker** — rejects blurry scans, wrong formats before submission (DocumentIntakeService quality stage: format/size/DPI/page-count gating with actionable recommendations)
-- [ ] **Smart form auto-population** — intake answers pre-fill USCIS/government forms automatically
+- [x] **Smart form auto-population** — intake answers pre-fill USCIS/government forms automatically (FormPopulationService: 7-form schema registry covering G-28/I-129/I-130/I-485/I-765/I-131/DS-160 with field-level provenance — every value carries its source identifier and confidence; populate-bundle endpoint generates all forms for a visa type in one call)
 - [x] **Intake-to-case pipeline** — completed intake flows directly into case file, zero re-entry (IntakeEngineService session → case)
 - [ ] **Automatic family member profile creation** — intake data auto-creates linked profiles for spouse, children, parents with relationship mapping
 - [x] **Conditional logic questionnaires** — questions adapt based on previous answers, visa type, and immigration status (rules-based engine with eligibility validation, document conditional inclusion, and red-flag detection)
@@ -192,9 +192,9 @@ The pitch: "9 hours/week of manual admin work eliminated. $230K/year in recovere
 - [ ] Case timeline/history view
 - [ ] **RFE tracking and response tools** — track RFE deadlines, draft responses with AI assistance
 - [ ] **AI RFE response builder** — ML-powered: summarize RFE notice, match evidence, draft response with citations
-- [ ] **Form auto-fill engine** — enter client data once, populate across all required forms (I-130, I-485, I-765, I-131, etc.)
-- [ ] **Bi-directional form sync** — change data in a form, it updates the client profile; change the profile, all forms update automatically
-- [ ] **Auto-fill empty fields with N/A** — per USCIS guidelines, auto-populate blank fields to prevent rejection
+- [x] **Form auto-fill engine** — enter client data once, populate across all required forms (I-130, I-485, I-765, I-131, etc.) (FormPopulationService.populate_bundle)
+- [x] **Bi-directional form sync** — change data in a form, it updates the client profile; change the profile, all forms update automatically (PATCH /api/forms/records/{id}/fields with provenance log + manual_overridden flag; re-running populate from a session re-pulls latest source values)
+- [x] **Auto-fill empty fields with N/A** — per USCIS guidelines, auto-populate blank fields to prevent rejection (empty_field_default in FormPopulationService.populate)
 - [ ] **350+ government forms library** — always-updated, pre-formatted immigration forms (SLA: updated within 1 hour of official USCIS release)
 - [ ] **Batch form generation** — family-based cases generate all related forms at once
 - [ ] **Real-time collaborative form editing** — attorney and client simultaneously edit the same form with live chat (LollyForms-killer)
@@ -444,7 +444,7 @@ Every verification step and safety check exists to protect everyone — attorney
 - [x] **RFE risk assessment** — flag potential RFE triggers before filing (RFEPredictorService with hand-curated trigger library + post-mitigation risk reduction estimates)
 - [ ] **Processing time prediction** — estimate decision timeline by form type and service center
 - [ ] **Policy change impact engine** — when new guidance drops, auto-flag affected active cases
-- [ ] **Smart form auto-population engine** — single intake → populate all required government forms
+- [x] **Smart form auto-population engine** — single intake → populate all required government forms (FormPopulationService — see Phase A workload tools)
 - [x] **Document classification AI** — auto-categorize uploaded documents by type (passport, I-94, pay stub, etc.) — DocumentIntakeService classify stage covers 24 document types via declared-type override + filename heuristics; pluggable for Textract / Google DocAI / Azure Form Recognizer at the `_classify` and `_extract` boundaries
 - [ ] **170-language OCR extraction** — extract data from documents in any language (match Filevine's bar)
 - [x] **Conflict detection AI** — flag discrepancies between extracted document data and existing database records (DocumentIntakeService.reconcile_against_checklist surfaces NAME_MISMATCH and other extracted-vs-intake conflicts; runs every reconcile cycle on the document collection page)

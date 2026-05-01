@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 from datetime import date
 from pathlib import Path
+from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
@@ -101,6 +102,7 @@ from immigration_compliance.services.conflict_check_service import ConflictCheck
 from immigration_compliance.services.onboarding_service import OnboardingService
 from immigration_compliance.services.document_intake_service import DocumentIntakeService
 from immigration_compliance.services.attorney_match_service import AttorneyMatchService
+from immigration_compliance.services.form_population_service import FormPopulationService
 
 # Resolve frontend directory
 _root = Path(__file__).resolve().parent.parent.parent.parent
@@ -166,6 +168,7 @@ conflict_check = ConflictCheckService()
 onboarding = OnboardingService()
 document_intake = DocumentIntakeService()
 attorney_match = AttorneyMatchService()
+form_population = FormPopulationService()
 
 # Gap Closers — competitive response features
 hris_deep = HRISDeepService()
@@ -317,6 +320,10 @@ def serve_onboarding_attorney() -> HTMLResponse:
 @app.get("/intake/documents", response_class=HTMLResponse)
 def serve_document_collection() -> HTMLResponse:
     return _serve_html(_frontend_dir / "document-collection.html", "Document collection not found.")
+
+@app.get("/forms", response_class=HTMLResponse)
+def serve_forms_workspace() -> HTMLResponse:
+    return _serve_html(_frontend_dir / "forms-workspace.html", "Forms workspace not found.")
 
 @app.get("/health", response_model=HealthResponse)
 def health_check() -> HealthResponse:
@@ -1950,3 +1957,114 @@ def match_from_intake_session(req: AttorneyMatchSessionRequest, user: UserOut = 
 @app.get("/api/match/log")
 def get_match_log(limit: int = 50):
     return attorney_match.get_match_log(limit=limit)
+
+
+# =============================================
+# Smart Form Auto-Population endpoints
+# =============================================
+
+class FormPopulateRequest(BaseModel):
+    form_id: str
+    session_id: str | None = None
+    intake_answers: dict | None = None
+    applicant_profile: dict | None = None
+
+class FormBundleRequest(BaseModel):
+    visa_type: str
+    session_id: str | None = None
+    intake_answers: dict | None = None
+    applicant_profile: dict | None = None
+
+class FormFieldUpdate(BaseModel):
+    field_id: str
+    new_value: Any
+    edited_by: str = "user"
+
+@app.get("/api/forms")
+def list_form_schemas(visa_type: str | None = None):
+    return FormPopulationService.list_forms(visa_type=visa_type)
+
+@app.get("/api/forms/{form_id}/schema")
+def get_form_schema(form_id: str):
+    s = FormPopulationService.get_form_schema(form_id)
+    if s is None:
+        raise HTTPException(status_code=404, detail="Form not found")
+    return s
+
+@app.get("/api/forms/recommendations/{visa_type}")
+def get_form_recommendations(visa_type: str):
+    return {"visa_type": visa_type, "recommended_forms": FormPopulationService.list_recommended_forms_for_visa(visa_type)}
+
+def _resolve_population_inputs(req: "FormPopulateRequest | FormBundleRequest", user: UserOut) -> tuple[dict, list[dict]]:
+    """Pull answers from a session if provided, else use what was passed."""
+    answers = req.intake_answers or {}
+    extracted: list[dict] = []
+    if req.session_id:
+        s = intake_engine.get_session(req.session_id)
+        if s is None:
+            raise HTTPException(status_code=404, detail="Intake session not found")
+        if s["applicant_id"] != user.id:
+            raise HTTPException(status_code=403, detail="Access denied")
+        if not answers:
+            answers = s["answers"]
+        extracted = document_intake.list_documents(applicant_id=user.id, session_id=req.session_id)
+    return answers, extracted
+
+@app.post("/api/forms/populate", status_code=201)
+def populate_form(req: FormPopulateRequest, user: UserOut = Depends(get_current_user)):
+    answers, extracted = _resolve_population_inputs(req, user)
+    try:
+        return form_population.populate(
+            form_id=req.form_id,
+            applicant_id=user.id,
+            intake_answers=answers,
+            extracted_documents=extracted,
+            applicant_profile=req.applicant_profile or {},
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
+@app.post("/api/forms/populate-bundle")
+def populate_form_bundle(req: FormBundleRequest, user: UserOut = Depends(get_current_user)):
+    answers, extracted = _resolve_population_inputs(req, user)
+    return form_population.populate_bundle(
+        applicant_id=user.id,
+        visa_type=req.visa_type,
+        intake_answers=answers,
+        extracted_documents=extracted,
+        applicant_profile=req.applicant_profile or {},
+    )
+
+@app.get("/api/forms/records")
+def list_form_records(form_id: str | None = None, user: UserOut = Depends(get_current_user)):
+    return form_population.list_records(applicant_id=user.id, form_id=form_id)
+
+@app.get("/api/forms/records/{record_id}")
+def get_form_record(record_id: str, user: UserOut = Depends(get_current_user)):
+    rec = form_population.get_record(record_id)
+    if rec is None:
+        raise HTTPException(status_code=404, detail="Form record not found")
+    if rec["applicant_id"] != user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    return rec
+
+@app.patch("/api/forms/records/{record_id}/fields")
+def update_form_field(record_id: str, update: FormFieldUpdate, user: UserOut = Depends(get_current_user)):
+    rec = form_population.get_record(record_id)
+    if rec is None:
+        raise HTTPException(status_code=404, detail="Form record not found")
+    if rec["applicant_id"] != user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    try:
+        return form_population.update_field(record_id, update.field_id, update.new_value, edited_by=update.edited_by)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
+@app.get("/api/forms/records/{record_id}/provenance")
+def get_form_provenance(record_id: str, field_id: str | None = None, user: UserOut = Depends(get_current_user)):
+    rec = form_population.get_record(record_id)
+    if rec is None:
+        raise HTTPException(status_code=404, detail="Form record not found")
+    if rec["applicant_id"] != user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    return form_population.get_provenance(record_id=record_id, field_id=field_id)
