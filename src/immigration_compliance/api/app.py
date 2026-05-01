@@ -113,6 +113,7 @@ from immigration_compliance.services.migration_importer_service import Migration
 from immigration_compliance.services.petition_letter_service import PetitionLetterService
 from immigration_compliance.services.rfe_response_service import RFEResponseService
 from immigration_compliance.services.support_letter_service import SupportLetterService
+from immigration_compliance.services.completeness_scorer_service import CompletenessScorerService
 from immigration_compliance.services.persistent_store_service import PersistentStore, get_default_store
 from immigration_compliance.services.storage_binding import bind_storage
 
@@ -198,6 +199,7 @@ migration_importer = MigrationImporterService(case_workspace=case_workspace, int
 petition_letter = PetitionLetterService(case_workspace=case_workspace, intake_engine=intake_engine, document_intake=document_intake)
 rfe_response = RFEResponseService(case_workspace=case_workspace, intake_engine=intake_engine, document_intake=document_intake)
 support_letter = SupportLetterService(case_workspace=case_workspace, intake_engine=intake_engine, document_intake=document_intake)
+completeness_scorer = CompletenessScorerService(case_workspace=case_workspace, intake_engine=intake_engine, document_intake=document_intake)
 
 # Persistent store — reads VEROM_DB_PATH env var (default: verom_state.db). Set
 # VEROM_DISABLE_PERSISTENCE=1 to fall back to in-memory only.
@@ -3179,3 +3181,57 @@ def get_support_letter_review(letter_id: str, user: UserOut = Depends(get_curren
     if ws is None or (ws["applicant_id"] != user.id and ws.get("attorney_id") != user.id):
         raise HTTPException(status_code=403, detail="Access denied")
     return PlainTextResponse(content=SupportLetterService.render_review_text(l))
+
+
+# =============================================
+# Completeness Scorer endpoints
+# =============================================
+
+class CompletenessScoreRequest(BaseModel):
+    workspace_id: str
+    petition_kind: str
+
+@app.get("/api/completeness-scorer/petitions")
+def list_completeness_petitions():
+    return CompletenessScorerService.list_supported_petitions()
+
+@app.get("/api/completeness-scorer/petitions/{petition_kind}/factors")
+def get_completeness_factors(petition_kind: str):
+    f = CompletenessScorerService.get_factor_set(petition_kind)
+    if f is None:
+        raise HTTPException(status_code=404, detail="Petition kind not supported")
+    return f
+
+@app.post("/api/completeness-scorer/score", status_code=201)
+def score_completeness(req: CompletenessScoreRequest, user: UserOut = Depends(get_current_user)):
+    ws = case_workspace.get_workspace(req.workspace_id)
+    if ws is None:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    if ws["applicant_id"] != user.id and ws.get("attorney_id") != user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    try:
+        return completeness_scorer.score(req.workspace_id, req.petition_kind)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+@app.get("/api/completeness-scorer/reports")
+def list_completeness_reports(workspace_id: str | None = None, user: UserOut = Depends(get_current_user)):
+    if workspace_id:
+        ws = case_workspace.get_workspace(workspace_id)
+        if ws is None:
+            raise HTTPException(status_code=404, detail="Workspace not found")
+        if ws["applicant_id"] != user.id and ws.get("attorney_id") != user.id:
+            raise HTTPException(status_code=403, detail="Access denied")
+    return completeness_scorer.list_reports(workspace_id=workspace_id)
+
+@app.get("/api/completeness-scorer/reports/{report_id}")
+def get_completeness_report(report_id: str, user: UserOut = Depends(get_current_user)):
+    r = completeness_scorer.get_report(report_id)
+    if r is None:
+        raise HTTPException(status_code=404, detail="Report not found")
+    ws = case_workspace.get_workspace(r["workspace_id"])
+    if ws is None or (ws["applicant_id"] != user.id and ws.get("attorney_id") != user.id):
+        raise HTTPException(status_code=403, detail="Access denied")
+    return r
