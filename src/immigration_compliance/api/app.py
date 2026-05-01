@@ -110,6 +110,7 @@ from immigration_compliance.services.family_bundle_service import FamilyBundleSe
 from immigration_compliance.services.packet_assembly_service import PacketAssemblyService
 from immigration_compliance.services.regulatory_impact_service import RegulatoryImpactService
 from immigration_compliance.services.migration_importer_service import MigrationImporterService
+from immigration_compliance.services.petition_letter_service import PetitionLetterService
 
 # Resolve frontend directory
 _root = Path(__file__).resolve().parent.parent.parent.parent
@@ -190,6 +191,7 @@ family_bundle = FamilyBundleService(case_workspace=case_workspace, intake_engine
 packet_assembly = PacketAssemblyService(case_workspace=case_workspace, document_intake=document_intake, form_population=form_population)
 regulatory_impact_engine = RegulatoryImpactService(case_workspace=case_workspace)
 migration_importer = MigrationImporterService(case_workspace=case_workspace, intake_engine=intake_engine)
+petition_letter = PetitionLetterService(case_workspace=case_workspace, intake_engine=intake_engine, document_intake=document_intake)
 
 # Gap Closers — competitive response features
 hris_deep = HRISDeepService()
@@ -2824,3 +2826,84 @@ def get_migration_import(import_id: str, user: UserOut = Depends(get_current_use
     if r["applicant_owner_id"] != user.id:
         raise HTTPException(status_code=403, detail="Access denied")
     return r
+
+
+# =============================================
+# Petition Letter Generator endpoints
+# =============================================
+
+class PetitionGenerateRequest(BaseModel):
+    workspace_id: str
+    petition_kind: str
+    attorney_profile: dict | None = None
+    force_include_weak_sections: bool = False
+
+@app.get("/api/petition-letter/petitions")
+def list_petitions():
+    return PetitionLetterService.list_supported_petitions()
+
+@app.get("/api/petition-letter/petitions/{petition_id}")
+def get_petition_spec(petition_id: str):
+    spec = PetitionLetterService.get_petition_spec(petition_id)
+    if spec is None:
+        raise HTTPException(status_code=404, detail="Petition spec not found")
+    return spec
+
+@app.post("/api/petition-letter/generate", status_code=201)
+def generate_petition_letter(req: PetitionGenerateRequest, user: UserOut = Depends(get_current_user)):
+    ws = case_workspace.get_workspace(req.workspace_id)
+    if ws is None:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    if ws["applicant_id"] != user.id and ws.get("attorney_id") != user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    try:
+        return petition_letter.generate(
+            workspace_id=req.workspace_id,
+            petition_kind=req.petition_kind,
+            attorney_profile=req.attorney_profile,
+            force_include_weak_sections=req.force_include_weak_sections,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+@app.get("/api/petition-letter/drafts")
+def list_petition_drafts(workspace_id: str | None = None, user: UserOut = Depends(get_current_user)):
+    if workspace_id:
+        ws = case_workspace.get_workspace(workspace_id)
+        if ws is None:
+            raise HTTPException(status_code=404, detail="Workspace not found")
+        if ws["applicant_id"] != user.id and ws.get("attorney_id") != user.id:
+            raise HTTPException(status_code=403, detail="Access denied")
+    return petition_letter.list_drafts(workspace_id=workspace_id)
+
+@app.get("/api/petition-letter/drafts/{draft_id}")
+def get_petition_draft(draft_id: str, user: UserOut = Depends(get_current_user)):
+    d = petition_letter.get_draft(draft_id)
+    if d is None:
+        raise HTTPException(status_code=404, detail="Draft not found")
+    ws = case_workspace.get_workspace(d["workspace_id"])
+    if ws is None or (ws["applicant_id"] != user.id and ws.get("attorney_id") != user.id):
+        raise HTTPException(status_code=403, detail="Access denied")
+    return d
+
+@app.get("/api/petition-letter/drafts/{draft_id}/text", response_class=PlainTextResponse)
+def get_petition_draft_text(draft_id: str, user: UserOut = Depends(get_current_user)):
+    d = petition_letter.get_draft(draft_id)
+    if d is None:
+        raise HTTPException(status_code=404, detail="Draft not found")
+    ws = case_workspace.get_workspace(d["workspace_id"])
+    if ws is None or (ws["applicant_id"] != user.id and ws.get("attorney_id") != user.id):
+        raise HTTPException(status_code=403, detail="Access denied")
+    return PlainTextResponse(content=PetitionLetterService.render_text(d))
+
+@app.get("/api/petition-letter/drafts/{draft_id}/review", response_class=PlainTextResponse)
+def get_petition_draft_review(draft_id: str, user: UserOut = Depends(get_current_user)):
+    d = petition_letter.get_draft(draft_id)
+    if d is None:
+        raise HTTPException(status_code=404, detail="Draft not found")
+    ws = case_workspace.get_workspace(d["workspace_id"])
+    if ws is None or (ws["applicant_id"] != user.id and ws.get("attorney_id") != user.id):
+        raise HTTPException(status_code=403, detail="Access denied")
+    return PlainTextResponse(content=PetitionLetterService.render_review_text(d))

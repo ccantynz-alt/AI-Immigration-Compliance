@@ -270,7 +270,7 @@ The pitch: "9 hours/week of manual admin work eliminated. $230K/year in recovere
 - [ ] **AI case strategy engine** — "based on similar approved cases, here's the recommended approach and evidence list"
 - [ ] **Precedent citation finder** — AI finds relevant approved petitions, AAO decisions, and circuit court rulings
 - [ ] **AI brief writer** — generate first drafts of legal briefs for EOIR/BIA proceedings
-- [ ] **AI petition drafting (full document)** — generate 20+ page petition letters with exhibits, appendix, and citations in minutes (Visalaw.ai Drafts-killer)
+- [x] **AI petition drafting (full document)** — generate 20+ page petition letters with exhibits, appendix, and citations in minutes (Visalaw.ai Drafts-killer) (PetitionLetterService: 5 petition kinds — O-1A, EB-1A, EB-2-NIW, H-1B, L-1A — with section-by-section assembly: header, introduction, beneficiary background, legal standard with INA + CFR + AAO citations, criterion-by-criterion evidence (Kazarian framework), Dhanasar prongs (NIW), specialty-occupation analysis (H-1B), L-1A elements, conclusion; every legal reference tagged [VERIFIED]/[PENDING_VERIFICATION]/[CITATION_NEEDED] so attorney sees exactly what needs human review; insufficient evidence sections marked [INSUFFICIENT_EVIDENCE] and excluded by default with force_include override)
 - [ ] **AI support letter generation** — auto-draft employer support letters, expert opinion letters from case data
 - [ ] **Bulk letter generation** — produce multiple reference letters and expert opinion letters at once from templates
 - [ ] **AI redrafting** — refine individual sections or regenerate entire drafts with targeted feedback
