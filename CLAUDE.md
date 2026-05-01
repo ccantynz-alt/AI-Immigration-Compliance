@@ -266,13 +266,13 @@ The pitch: "9 hours/week of manual admin work eliminated. $230K/year in recovere
 
 **AI Legal Research & Drafting** (Docketwise IQ-killer — our AI must be better)
 - [ ] **AI-powered legal research** — search immigration case law, policy memos, AAO decisions, BIA precedent
-- [ ] **AI draft generation** — cover letters, RFE responses, support letters, legal briefs, motions
+- [x] **AI draft generation** — cover letters, RFE responses, support letters, legal briefs, motions (PetitionLetterService + RFEResponseService + SupportLetterService + PacketAssemblyService cover letters cover the petition letter, RFE response, and support letter slots; legal briefs / motions still pending)
 - [ ] **AI case strategy engine** — "based on similar approved cases, here's the recommended approach and evidence list"
 - [ ] **Precedent citation finder** — AI finds relevant approved petitions, AAO decisions, and circuit court rulings
 - [ ] **AI brief writer** — generate first drafts of legal briefs for EOIR/BIA proceedings
 - [x] **AI petition drafting (full document)** — generate 20+ page petition letters with exhibits, appendix, and citations in minutes (Visalaw.ai Drafts-killer) (PetitionLetterService: 5 petition kinds — O-1A, EB-1A, EB-2-NIW, H-1B, L-1A — with section-by-section assembly: header, introduction, beneficiary background, legal standard with INA + CFR + AAO citations, criterion-by-criterion evidence (Kazarian framework), Dhanasar prongs (NIW), specialty-occupation analysis (H-1B), L-1A elements, conclusion; every legal reference tagged [VERIFIED]/[PENDING_VERIFICATION]/[CITATION_NEEDED] so attorney sees exactly what needs human review; insufficient evidence sections marked [INSUFFICIENT_EVIDENCE] and excluded by default with force_include override)
-- [ ] **AI support letter generation** — auto-draft employer support letters, expert opinion letters from case data
-- [ ] **Bulk letter generation** — produce multiple reference letters and expert opinion letters at once from templates
+- [x] **AI support letter generation** — auto-draft employer support letters, expert opinion letters from case data (SupportLetterService: 7 letter kinds — employer_support, expert_opinion, peer_recommendation, reference_letter, membership_attestation, critical_role, professor_endorsement; templated section assembly with case-specific fact substitution from intake + extracted documents; same [VERIFIED]/[PENDING_VERIFICATION]/[CITATION_NEEDED] discipline as petition letter)
+- [x] **Bulk letter generation** — produce multiple reference letters and expert opinion letters at once from templates (SupportLetterService.generate_bulk: single call generates a plan of letters, each with its own kind / author / criterion focus; per-criterion expert letters for O-1/EB-1A petitions; succeeded/failed totals returned)
 - [ ] **AI redrafting** — refine individual sections or regenerate entire drafts with targeted feedback
 - [x] **Policy change impact analyzer** — when a new policy memo drops, AI flags which active cases are affected (RegulatoryImpactService: structured predicate DSL with all_of/any_of/not compound logic over snapshot fields; analyze_event walks every active workspace, returns per-case evidence + draft client notification + attorney action; supports 8 event kinds and 4 severity levels)
 

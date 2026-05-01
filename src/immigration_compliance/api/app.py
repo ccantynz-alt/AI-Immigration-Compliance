@@ -112,6 +112,7 @@ from immigration_compliance.services.regulatory_impact_service import Regulatory
 from immigration_compliance.services.migration_importer_service import MigrationImporterService
 from immigration_compliance.services.petition_letter_service import PetitionLetterService
 from immigration_compliance.services.rfe_response_service import RFEResponseService
+from immigration_compliance.services.support_letter_service import SupportLetterService
 from immigration_compliance.services.persistent_store_service import PersistentStore, get_default_store
 from immigration_compliance.services.storage_binding import bind_storage
 
@@ -196,6 +197,7 @@ regulatory_impact_engine = RegulatoryImpactService(case_workspace=case_workspace
 migration_importer = MigrationImporterService(case_workspace=case_workspace, intake_engine=intake_engine)
 petition_letter = PetitionLetterService(case_workspace=case_workspace, intake_engine=intake_engine, document_intake=document_intake)
 rfe_response = RFEResponseService(case_workspace=case_workspace, intake_engine=intake_engine, document_intake=document_intake)
+support_letter = SupportLetterService(case_workspace=case_workspace, intake_engine=intake_engine, document_intake=document_intake)
 
 # Persistent store — reads VEROM_DB_PATH env var (default: verom_state.db). Set
 # VEROM_DISABLE_PERSISTENCE=1 to fall back to in-memory only.
@@ -3081,3 +3083,99 @@ def get_persistent_audit_summary(user: UserOut = Depends(get_current_user)):
     if persistent_store is None:
         return {"persistence_enabled": False}
     return {"persistence_enabled": True, **persistent_store.get_audit_summary()}
+
+
+# =============================================
+# Support Letter Generator endpoints
+# =============================================
+
+class SupportLetterGenerateRequest(BaseModel):
+    workspace_id: str
+    letter_kind: str
+    author_profile: dict | None = None
+    criterion_focus: str | None = None
+    custom_facts: dict | None = None
+
+class SupportLetterBulkRequest(BaseModel):
+    workspace_id: str
+    plan: list[dict]
+
+@app.get("/api/support-letter/kinds")
+def list_support_letter_kinds(visa_type: str | None = None):
+    return SupportLetterService.list_letter_kinds(visa_type=visa_type)
+
+@app.get("/api/support-letter/kinds/{kind_id}")
+def get_support_letter_template(kind_id: str):
+    t = SupportLetterService.get_template(kind_id)
+    if t is None:
+        raise HTTPException(status_code=404, detail="Letter kind not found")
+    return t
+
+@app.post("/api/support-letter/generate", status_code=201)
+def generate_support_letter(req: SupportLetterGenerateRequest, user: UserOut = Depends(get_current_user)):
+    ws = case_workspace.get_workspace(req.workspace_id)
+    if ws is None:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    if ws["applicant_id"] != user.id and ws.get("attorney_id") != user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    try:
+        return support_letter.generate(
+            workspace_id=req.workspace_id,
+            letter_kind=req.letter_kind,
+            author_profile=req.author_profile,
+            criterion_focus=req.criterion_focus,
+            custom_facts=req.custom_facts,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+@app.post("/api/support-letter/generate-bulk", status_code=201)
+def generate_support_letter_bulk(req: SupportLetterBulkRequest, user: UserOut = Depends(get_current_user)):
+    ws = case_workspace.get_workspace(req.workspace_id)
+    if ws is None:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    if ws["applicant_id"] != user.id and ws.get("attorney_id") != user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    return support_letter.generate_bulk(workspace_id=req.workspace_id, plan=req.plan)
+
+@app.get("/api/support-letter/letters")
+def list_support_letters(workspace_id: str | None = None, letter_kind: str | None = None, user: UserOut = Depends(get_current_user)):
+    if workspace_id:
+        ws = case_workspace.get_workspace(workspace_id)
+        if ws is None:
+            raise HTTPException(status_code=404, detail="Workspace not found")
+        if ws["applicant_id"] != user.id and ws.get("attorney_id") != user.id:
+            raise HTTPException(status_code=403, detail="Access denied")
+    return support_letter.list_letters(workspace_id=workspace_id, letter_kind=letter_kind)
+
+@app.get("/api/support-letter/letters/{letter_id}")
+def get_support_letter(letter_id: str, user: UserOut = Depends(get_current_user)):
+    l = support_letter.get_letter(letter_id)
+    if l is None:
+        raise HTTPException(status_code=404, detail="Letter not found")
+    ws = case_workspace.get_workspace(l["workspace_id"])
+    if ws is None or (ws["applicant_id"] != user.id and ws.get("attorney_id") != user.id):
+        raise HTTPException(status_code=403, detail="Access denied")
+    return l
+
+@app.get("/api/support-letter/letters/{letter_id}/text", response_class=PlainTextResponse)
+def get_support_letter_text(letter_id: str, user: UserOut = Depends(get_current_user)):
+    l = support_letter.get_letter(letter_id)
+    if l is None:
+        raise HTTPException(status_code=404, detail="Letter not found")
+    ws = case_workspace.get_workspace(l["workspace_id"])
+    if ws is None or (ws["applicant_id"] != user.id and ws.get("attorney_id") != user.id):
+        raise HTTPException(status_code=403, detail="Access denied")
+    return PlainTextResponse(content=SupportLetterService.render_text(l))
+
+@app.get("/api/support-letter/letters/{letter_id}/review", response_class=PlainTextResponse)
+def get_support_letter_review(letter_id: str, user: UserOut = Depends(get_current_user)):
+    l = support_letter.get_letter(letter_id)
+    if l is None:
+        raise HTTPException(status_code=404, detail="Letter not found")
+    ws = case_workspace.get_workspace(l["workspace_id"])
+    if ws is None or (ws["applicant_id"] != user.id and ws.get("attorney_id") != user.id):
+        raise HTTPException(status_code=403, detail="Access denied")
+    return PlainTextResponse(content=SupportLetterService.render_review_text(l))
