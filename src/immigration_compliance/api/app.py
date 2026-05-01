@@ -122,6 +122,7 @@ from immigration_compliance.services.trust_accounting_service import TrustAccoun
 from immigration_compliance.services.efiling_proxy_service import EFilingProxyService
 from immigration_compliance.services.notification_service import NotificationService
 from immigration_compliance.services.team_management_service import TeamManagementService
+from immigration_compliance.services.lead_management_service import LeadManagementService
 from immigration_compliance.services.persistent_store_service import PersistentStore, get_default_store
 from immigration_compliance.services.storage_binding import bind_storage
 
@@ -216,6 +217,7 @@ trust_accounting = TrustAccountingService()
 efiling_proxy = EFilingProxyService(case_workspace=case_workspace, form_population=form_population)
 notifications = NotificationService()
 team_management = TeamManagementService(case_workspace=case_workspace)
+lead_management = LeadManagementService(conflict_check=conflict_check)
 
 # Persistent store — reads VEROM_DB_PATH env var (default: verom_state.db). Set
 # VEROM_DISABLE_PERSISTENCE=1 to fall back to in-memory only.
@@ -4051,3 +4053,137 @@ def get_member_workload(member_id: str, user: UserOut = Depends(get_current_user
 @app.get("/api/team/firms/{firm_id}/workload")
 def get_firm_workload(firm_id: str, user: UserOut = Depends(require_role(UserRole.ATTORNEY))):
     return team_management.get_firm_workload(firm_id)
+
+
+# =============================================
+# Lead Management / CRM endpoints
+# =============================================
+
+class LeadCaptureRequest(BaseModel):
+    firm_id: str
+    full_name: str
+    email: str = ""
+    phone: str = ""
+    source: str = "website_form"
+    visa_type: str | None = None
+    country_of_birth: str | None = None
+    country_of_destination: str = "US"
+    urgency: str = "normal"
+    employer_paying: bool = False
+    referrer_name: str = ""
+    notes: str = ""
+    attorney_id: str | None = None
+    custom_fields: dict | None = None
+
+class LeadStageRequest(BaseModel):
+    stage: str
+    reason: str = ""
+
+class TouchpointRequest(BaseModel):
+    channel: str
+    direction: str = "outbound"
+    summary: str = ""
+
+class ReferralSourceRequest(BaseModel):
+    firm_id: str
+    name: str
+    contact_email: str = ""
+    relationship: str = ""
+
+@app.get("/api/leads/pipeline-stages")
+def list_pipeline_stages():
+    return LeadManagementService.list_pipeline_stages()
+
+@app.get("/api/leads/sources")
+def list_lead_sources():
+    return LeadManagementService.list_lead_sources()
+
+@app.post("/api/leads", status_code=201)
+def capture_lead(req: LeadCaptureRequest):
+    """Public lead capture endpoint — anyone can submit a lead via the
+    website form. No auth required."""
+    try:
+        return lead_management.capture_lead(
+            firm_id=req.firm_id, full_name=req.full_name,
+            email=req.email, phone=req.phone, source=req.source,
+            visa_type=req.visa_type, country_of_birth=req.country_of_birth,
+            country_of_destination=req.country_of_destination,
+            urgency=req.urgency, employer_paying=req.employer_paying,
+            referrer_name=req.referrer_name, notes=req.notes,
+            attorney_id=req.attorney_id, custom_fields=req.custom_fields,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+@app.get("/api/leads")
+def list_leads(
+    firm_id: str | None = None, stage: str | None = None,
+    attorney_id: str | None = None, source: str | None = None,
+    min_score: int | None = None,
+    user: UserOut = Depends(require_role(UserRole.ATTORNEY)),
+):
+    return lead_management.list_leads(
+        firm_id=firm_id, stage=stage, attorney_id=attorney_id,
+        source=source, min_score=min_score,
+    )
+
+@app.get("/api/leads/{lead_id}")
+def get_lead(lead_id: str, user: UserOut = Depends(require_role(UserRole.ATTORNEY))):
+    l = lead_management.get_lead(lead_id)
+    if l is None:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    return l
+
+@app.patch("/api/leads/{lead_id}/stage")
+def transition_lead_stage(lead_id: str, req: LeadStageRequest, user: UserOut = Depends(require_role(UserRole.ATTORNEY))):
+    try:
+        return lead_management.transition_stage(lead_id, req.stage, reason=req.reason, actor_id=user.id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+@app.post("/api/leads/{lead_id}/touchpoints", status_code=201)
+def add_lead_touchpoint(lead_id: str, req: TouchpointRequest, user: UserOut = Depends(require_role(UserRole.ATTORNEY))):
+    try:
+        return lead_management.add_touchpoint(
+            lead_id, channel=req.channel, direction=req.direction,
+            summary=req.summary, actor_id=user.id,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
+@app.get("/api/leads/{lead_id}/touchpoints")
+def list_lead_touchpoints(lead_id: str, limit: int = 100, user: UserOut = Depends(require_role(UserRole.ATTORNEY))):
+    return lead_management.list_touchpoints(lead_id=lead_id, limit=limit)
+
+@app.post("/api/leads/{lead_id}/rescore")
+def rescore_lead(lead_id: str, user: UserOut = Depends(require_role(UserRole.ATTORNEY))):
+    try:
+        return lead_management.rescore_lead(lead_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
+@app.post("/api/leads/{lead_id}/link-workspace")
+def link_lead_to_workspace(lead_id: str, workspace_id: str, user: UserOut = Depends(require_role(UserRole.ATTORNEY))):
+    try:
+        return lead_management.link_to_workspace(lead_id, workspace_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
+@app.post("/api/leads/referral-sources", status_code=201)
+def register_referral_source(req: ReferralSourceRequest, user: UserOut = Depends(require_role(UserRole.ATTORNEY))):
+    return lead_management.register_referral_source(
+        firm_id=req.firm_id, name=req.name,
+        contact_email=req.contact_email, relationship=req.relationship,
+    )
+
+@app.get("/api/leads/referral-sources")
+def list_referral_sources(firm_id: str | None = None, user: UserOut = Depends(require_role(UserRole.ATTORNEY))):
+    return lead_management.list_referral_sources(firm_id=firm_id)
+
+@app.get("/api/leads/analytics/pipeline")
+def get_pipeline_analytics(firm_id: str | None = None, user: UserOut = Depends(require_role(UserRole.ATTORNEY))):
+    return lead_management.pipeline_summary(firm_id=firm_id)
+
+@app.get("/api/leads/analytics/sources")
+def get_source_attribution(firm_id: str | None = None, user: UserOut = Depends(require_role(UserRole.ATTORNEY))):
+    return lead_management.source_attribution(firm_id=firm_id)

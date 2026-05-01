@@ -277,13 +277,13 @@ The pitch: "9 hours/week of manual admin work eliminated. $230K/year in recovere
 - [x] **Policy change impact analyzer** — when a new policy memo drops, AI flags which active cases are affected (RegulatoryImpactService: structured predicate DSL with all_of/any_of/not compound logic over snapshot fields; analyze_event walks every active workspace, returns per-case evidence + draft client notification + attorney action; supports 8 event kinds and 4 severity levels)
 
 **CRM & Lead Management** (no competitor combines CRM + case management this well)
-- [ ] **Website lead capture forms** — embeddable on attorney's own website, leads flow into pipeline
-- [ ] **Multi-channel lead intake** — WhatsApp, Facebook Messenger, SMS, website chat, phone
-- [ ] **AI lead scoring** — ranks potential clients by case viability, complexity, and fee potential
+- [x] **Website lead capture forms** — embeddable on attorney's own website, leads flow into pipeline (LeadManagementService.capture_lead — no-auth public endpoint accepts inbound leads from any source; auto-scores immediately)
+- [x] **Multi-channel lead intake** — WhatsApp, Facebook Messenger, SMS, website chat, phone (12 source channels: website_form, whatsapp, facebook_messenger, sms, phone, email, referral, walkin, social_media, google_ads, directory_listing, other)
+- [x] **AI lead scoring** — ranks potential clients by case viability, complexity, and fee potential (LeadManagementService.rescore_lead: 9-component scoring (visa viability, doc readiness, engagement, fee potential, urgency, referral quality, geographic fit, conflict-free, communication health) with explainable score_reasons and tier classification (hot/warm/qualified/cold))
 - [ ] **Consultation scheduler** — clients self-book paid consultations (Calendly-style, integrated)
 - [ ] **Follow-up automation** — drip email/SMS sequences for leads who didn't convert
-- [ ] **Referral tracking** — track which clients came from which referral source, measure ROI
-- [ ] **Lead-to-client conversion pipeline** — visual Kanban board from inquiry → consultation → retained → active case
+- [x] **Referral tracking** — track which clients came from which referral source, measure ROI (LeadManagementService.register_referral_source + source_attribution: per-source lead counts, retained counts, conversion rates, average lead score; warm-referral leads automatically score higher)
+- [x] **Lead-to-client conversion pipeline** — visual Kanban board from inquiry → consultation → retained → active case (LeadManagementService 9-stage pipeline: inquiry → contacted → consultation_scheduled → consulted → proposal_sent → retained → active_case (or declined/lost); per-stage timestamps + history; pipeline_summary returns funnel counts and conversion rates)
 
 **Trust Accounting & Billing** (LollyLaw's #1 selling point — we must match it)
 - [x] **Built-in IOLTA trust accounting** — three-way reconciliation (bank, trust ledger, client ledgers) (TrustAccountingService: bar-required IOLTA implementation with deposit / invoice_payment / refund / disbursement / interest / adjustment / transfer transaction kinds; per-client sub-ledgers with overdraft prevention; refund/disbursement/adjustment require explicit reason; three-way reconciliation flags BANK_MISMATCH, TRUST_LEDGER_MISMATCH, NEGATIVE_CLIENT_LEDGER; client statements with date-ranged transaction history)
@@ -472,7 +472,7 @@ Every verification step and safety check exists to protect everyone — attorney
 - [ ] Payment processing integration (LawPay, Stripe Connect)
 - [ ] Multi-language content delivery
 - [x] Trust accounting / IOLTA endpoints (15 endpoints under /api/trust-accounting/* covering accounts, client ledgers, transactions, bank balance posting, three-way reconciliation, and client statements)
-- [ ] CRM / lead management endpoints
+- [x] CRM / lead management endpoints (15 endpoints under /api/leads/* covering capture (no-auth), pipeline-stages, sources, list/detail, stage transitions, touchpoints, rescoring, workspace linkage, referral sources, and analytics — pipeline summary + source attribution)
 - [ ] Consultation scheduling endpoints
 - [ ] AI legal research endpoints
 - [ ] AI document drafting endpoints
