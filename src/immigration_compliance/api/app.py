@@ -123,6 +123,7 @@ from immigration_compliance.services.efiling_proxy_service import EFilingProxySe
 from immigration_compliance.services.notification_service import NotificationService
 from immigration_compliance.services.team_management_service import TeamManagementService
 from immigration_compliance.services.lead_management_service import LeadManagementService
+from immigration_compliance.services.consultation_booking_service import ConsultationBookingService
 from immigration_compliance.services.persistent_store_service import PersistentStore, get_default_store
 from immigration_compliance.services.storage_binding import bind_storage
 
@@ -218,6 +219,7 @@ efiling_proxy = EFilingProxyService(case_workspace=case_workspace, form_populati
 notifications = NotificationService()
 team_management = TeamManagementService(case_workspace=case_workspace)
 lead_management = LeadManagementService(conflict_check=conflict_check)
+consultation_booking = ConsultationBookingService(case_workspace=case_workspace, notification_service=notifications)
 
 # Persistent store — reads VEROM_DB_PATH env var (default: verom_state.db). Set
 # VEROM_DISABLE_PERSISTENCE=1 to fall back to in-memory only.
@@ -4187,3 +4189,189 @@ def get_pipeline_analytics(firm_id: str | None = None, user: UserOut = Depends(r
 @app.get("/api/leads/analytics/sources")
 def get_source_attribution(firm_id: str | None = None, user: UserOut = Depends(require_role(UserRole.ATTORNEY))):
     return lead_management.source_attribution(firm_id=firm_id)
+
+
+# =============================================
+# Consultation Booking endpoints
+# =============================================
+
+class AvailabilitySetRequest(BaseModel):
+    weekly_windows: list[dict]
+    slot_duration: int = 30
+    buffer_minutes: int = 15
+    timezone: str = "America/New_York"
+    max_advance_days: int = 60
+    min_notice_hours: int = 4
+
+class BlackoutRequest(BaseModel):
+    start_date: str
+    end_date: str
+    reason: str = ""
+
+class BookingLinkCreateRequest(BaseModel):
+    slug: str
+    label: str = ""
+    consult_type: str = "intake"
+    duration_minutes: int = 30
+    fee_usd: float = 0.0
+    description: str = ""
+
+class ConsultationBookRequest(BaseModel):
+    booking_slug: str
+    scheduled_start: str
+    client_name: str
+    client_email: str
+    client_phone: str = ""
+    notes: str = ""
+
+@app.get("/api/consultation-booking/consult-types")
+def list_consult_types():
+    return ConsultationBookingService.list_consult_types()
+
+@app.get("/api/consultation-booking/slot-durations")
+def list_slot_durations():
+    return ConsultationBookingService.list_slot_durations()
+
+@app.put("/api/consultation-booking/availability")
+def set_my_availability(req: AvailabilitySetRequest, user: UserOut = Depends(require_role(UserRole.ATTORNEY))):
+    try:
+        return consultation_booking.set_availability(
+            attorney_id=user.id,
+            weekly_windows=req.weekly_windows,
+            slot_duration=req.slot_duration,
+            buffer_minutes=req.buffer_minutes,
+            timezone=req.timezone,
+            max_advance_days=req.max_advance_days,
+            min_notice_hours=req.min_notice_hours,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+@app.get("/api/consultation-booking/availability")
+def get_my_availability(user: UserOut = Depends(require_role(UserRole.ATTORNEY))):
+    avail = consultation_booking.get_availability(user.id)
+    return avail or {"weekly_windows": [], "slot_duration": 30}
+
+@app.post("/api/consultation-booking/blackouts", status_code=201)
+def add_blackout(req: BlackoutRequest, user: UserOut = Depends(require_role(UserRole.ATTORNEY))):
+    try:
+        return consultation_booking.add_blackout(user.id, req.start_date, req.end_date, reason=req.reason)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+@app.get("/api/consultation-booking/blackouts")
+def list_my_blackouts(user: UserOut = Depends(require_role(UserRole.ATTORNEY))):
+    return consultation_booking.list_blackouts(user.id)
+
+@app.delete("/api/consultation-booking/blackouts/{blackout_id}", status_code=204)
+def remove_blackout(blackout_id: str, user: UserOut = Depends(require_role(UserRole.ATTORNEY))):
+    if not consultation_booking.remove_blackout(user.id, blackout_id):
+        raise HTTPException(status_code=404, detail="Blackout not found")
+
+@app.post("/api/consultation-booking/links", status_code=201)
+def create_booking_link(req: BookingLinkCreateRequest, user: UserOut = Depends(require_role(UserRole.ATTORNEY))):
+    try:
+        return consultation_booking.create_booking_link(
+            attorney_id=user.id, slug=req.slug, label=req.label,
+            consult_type=req.consult_type, duration_minutes=req.duration_minutes,
+            fee_usd=req.fee_usd, description=req.description,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+@app.get("/api/consultation-booking/links")
+def list_booking_links(attorney_id: str | None = None):
+    return consultation_booking.list_booking_links(attorney_id=attorney_id)
+
+@app.get("/api/consultation-booking/links/{slug}")
+def get_booking_link(slug: str):
+    """Public — anyone with the slug can see the link details."""
+    link = consultation_booking.get_booking_link(slug)
+    if link is None:
+        raise HTTPException(status_code=404, detail="Booking link not found")
+    return link
+
+@app.delete("/api/consultation-booking/links/{slug}")
+def deactivate_booking_link(slug: str, user: UserOut = Depends(require_role(UserRole.ATTORNEY))):
+    link = consultation_booking.get_booking_link(slug)
+    if link is None or link["attorney_id"] != user.id:
+        raise HTTPException(status_code=404, detail="Booking link not found")
+    return consultation_booking.deactivate_booking_link(slug)
+
+@app.get("/api/consultation-booking/links/{slug}/slots")
+def get_open_slots_for_link(slug: str, from_date: str | None = None, to_date: str | None = None):
+    """Public — anyone with the slug can fetch open slots."""
+    link = consultation_booking.get_booking_link(slug)
+    if link is None:
+        raise HTTPException(status_code=404, detail="Booking link not found")
+    return consultation_booking.get_open_slots(link["attorney_id"], from_date=from_date, to_date=to_date)
+
+@app.post("/api/consultation-booking/bookings", status_code=201)
+def book_consultation(req: ConsultationBookRequest):
+    """Public booking — Calendly-style, no auth required for the client."""
+    try:
+        return consultation_booking.book_consultation(
+            booking_slug=req.booking_slug,
+            scheduled_start=req.scheduled_start,
+            client_name=req.client_name,
+            client_email=req.client_email,
+            client_phone=req.client_phone,
+            notes=req.notes,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+@app.get("/api/consultation-booking/bookings/{consultation_id}")
+def get_booked_consultation(consultation_id: str, user: UserOut = Depends(get_current_user)):
+    c = consultation_booking.get_consultation(consultation_id)
+    if c is None:
+        raise HTTPException(status_code=404, detail="Consultation not found")
+    if c["attorney_id"] != user.id and c.get("client_user_id") != user.id and c.get("client_email") != user.email:
+        raise HTTPException(status_code=403, detail="Access denied")
+    return c
+
+@app.post("/api/consultation-booking/bookings/{consultation_id}/cancel")
+def cancel_booking(consultation_id: str, reason: str = "", user: UserOut = Depends(get_current_user)):
+    c = consultation_booking.get_consultation(consultation_id)
+    if c is None:
+        raise HTTPException(status_code=404, detail="Consultation not found")
+    if c["attorney_id"] != user.id and c.get("client_user_id") != user.id and c.get("client_email") != user.email:
+        raise HTTPException(status_code=403, detail="Access denied")
+    try:
+        return consultation_booking.cancel_consultation(consultation_id, reason=reason)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
+@app.post("/api/consultation-booking/bookings/{consultation_id}/complete")
+def complete_booking(consultation_id: str, summary: str = "", convert_to_workspace: bool = False, user: UserOut = Depends(require_role(UserRole.ATTORNEY))):
+    c = consultation_booking.get_consultation(consultation_id)
+    if c is None or c["attorney_id"] != user.id:
+        raise HTTPException(status_code=404, detail="Consultation not found")
+    try:
+        return consultation_booking.mark_consultation_complete(consultation_id, summary=summary, convert_to_workspace=convert_to_workspace)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
+@app.post("/api/consultation-booking/bookings/{consultation_id}/no-show")
+def mark_no_show(consultation_id: str, user: UserOut = Depends(require_role(UserRole.ATTORNEY))):
+    c = consultation_booking.get_consultation(consultation_id)
+    if c is None or c["attorney_id"] != user.id:
+        raise HTTPException(status_code=404, detail="Consultation not found")
+    try:
+        return consultation_booking.mark_no_show(consultation_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
+@app.post("/api/consultation-booking/bookings/{consultation_id}/confirm-payment")
+def confirm_consultation_payment(consultation_id: str, user: UserOut = Depends(get_current_user)):
+    c = consultation_booking.get_consultation(consultation_id)
+    if c is None:
+        raise HTTPException(status_code=404, detail="Consultation not found")
+    try:
+        return consultation_booking.confirm_payment(consultation_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
+@app.get("/api/consultation-booking/calendar")
+def get_my_consultation_calendar(from_date: str | None = None, to_date: str | None = None, user: UserOut = Depends(require_role(UserRole.ATTORNEY))):
+    return consultation_booking.attorney_calendar(user.id, from_date=from_date, to_date=to_date)
