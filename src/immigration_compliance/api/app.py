@@ -124,6 +124,7 @@ from immigration_compliance.services.notification_service import NotificationSer
 from immigration_compliance.services.team_management_service import TeamManagementService
 from immigration_compliance.services.lead_management_service import LeadManagementService
 from immigration_compliance.services.consultation_booking_service import ConsultationBookingService
+from immigration_compliance.services.legal_research_service import LegalResearchService
 from immigration_compliance.services.persistent_store_service import PersistentStore, get_default_store
 from immigration_compliance.services.storage_binding import bind_storage
 
@@ -220,6 +221,7 @@ notifications = NotificationService()
 team_management = TeamManagementService(case_workspace=case_workspace)
 lead_management = LeadManagementService(conflict_check=conflict_check)
 consultation_booking = ConsultationBookingService(case_workspace=case_workspace, notification_service=notifications)
+legal_research = LegalResearchService()
 
 # Persistent store — reads VEROM_DB_PATH env var (default: verom_state.db). Set
 # VEROM_DISABLE_PERSISTENCE=1 to fall back to in-memory only.
@@ -4375,3 +4377,56 @@ def confirm_consultation_payment(consultation_id: str, user: UserOut = Depends(g
 @app.get("/api/consultation-booking/calendar")
 def get_my_consultation_calendar(from_date: str | None = None, to_date: str | None = None, user: UserOut = Depends(require_role(UserRole.ATTORNEY))):
     return consultation_booking.attorney_calendar(user.id, from_date=from_date, to_date=to_date)
+
+
+# =============================================
+# Legal Research endpoints
+# =============================================
+
+class LegalResearchSearchRequest(BaseModel):
+    query: str = ""
+    authority_types: list[str] | None = None
+    tags: list[str] | None = None
+    min_year: int | None = None
+    limit: int = 10
+
+class CitationsForSectionRequest(BaseModel):
+    section_text: str
+    max_citations: int = 5
+
+@app.get("/api/legal-research/authority-types")
+def list_authority_types():
+    return LegalResearchService.list_authority_types()
+
+@app.get("/api/legal-research/tags")
+def list_research_tags():
+    return LegalResearchService.list_tags()
+
+@app.get("/api/legal-research/corpus-size")
+def get_corpus_size():
+    return {"size": LegalResearchService.get_corpus_size()}
+
+@app.post("/api/legal-research/search")
+def search_legal_research(req: LegalResearchSearchRequest, user: UserOut = Depends(get_current_user)):
+    try:
+        return legal_research.search(
+            query=req.query, authority_types=req.authority_types,
+            tags=req.tags, min_year=req.min_year, limit=req.limit,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+@app.post("/api/legal-research/citations-for-section")
+def citations_for_section(req: CitationsForSectionRequest, user: UserOut = Depends(get_current_user)):
+    return legal_research.find_citations_for_section(req.section_text, max_citations=req.max_citations)
+
+@app.get("/api/legal-research/citations-for-issue/{issue_tag}")
+def citations_for_issue(issue_tag: str, max_citations: int = 5, user: UserOut = Depends(get_current_user)):
+    return legal_research.find_citations_for_issue(issue_tag, max_citations=max_citations)
+
+@app.get("/api/legal-research/authority/{authority_id}")
+def get_authority_by_id(authority_id: str, user: UserOut = Depends(get_current_user)):
+    a = LegalResearchService.get_by_id(authority_id)
+    if a is None:
+        raise HTTPException(status_code=404, detail="Authority not found")
+    return a

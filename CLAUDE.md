@@ -265,10 +265,10 @@ The pitch: "9 hours/week of manual admin work eliminated. $230K/year in recovere
 - [x] **Physical mail tracking** — log expected USCIS mail, flag when 30-day delivery window passes
 
 **AI Legal Research & Drafting** (Docketwise IQ-killer — our AI must be better)
-- [ ] **AI-powered legal research** — search immigration case law, policy memos, AAO decisions, BIA precedent
+- [x] **AI-powered legal research** — search immigration case law, policy memos, AAO decisions, BIA precedent (LegalResearchService: 26-authority hand-curated seed corpus across 9 authority types — statutes/regulations/policy manual/AAO/BIA precedent/circuit court/SCOTUS/policy memos/USCIS alerts; precedential weighting (SCOTUS=100, statute=90, circuit=80, BIA=70...); rules-based ranking with title (5/term)/holding (3/term)/citation (8/term)/tag (6/each) + recency boost; pluggable boundary so the corpus swaps for a vector index in production)
 - [x] **AI draft generation** — cover letters, RFE responses, support letters, legal briefs, motions (PetitionLetterService + RFEResponseService + SupportLetterService + PacketAssemblyService cover letters cover the petition letter, RFE response, and support letter slots; legal briefs / motions still pending)
 - [ ] **AI case strategy engine** — "based on similar approved cases, here's the recommended approach and evidence list"
-- [ ] **Precedent citation finder** — AI finds relevant approved petitions, AAO decisions, and circuit court rulings
+- [x] **Precedent citation finder** — AI finds relevant approved petitions, AAO decisions, and circuit court rulings (LegalResearchService.find_citations_for_section pulls top citations from a draft paragraph; find_citations_for_issue retrieves authorities by issue tag — designed to be called from the petition letter and RFE response generators)
 - [ ] **AI brief writer** — generate first drafts of legal briefs for EOIR/BIA proceedings
 - [x] **AI petition drafting (full document)** — generate 20+ page petition letters with exhibits, appendix, and citations in minutes (Visalaw.ai Drafts-killer) (PetitionLetterService: 5 petition kinds — O-1A, EB-1A, EB-2-NIW, H-1B, L-1A — with section-by-section assembly: header, introduction, beneficiary background, legal standard with INA + CFR + AAO citations, criterion-by-criterion evidence (Kazarian framework), Dhanasar prongs (NIW), specialty-occupation analysis (H-1B), L-1A elements, conclusion; every legal reference tagged [VERIFIED]/[PENDING_VERIFICATION]/[CITATION_NEEDED] so attorney sees exactly what needs human review; insufficient evidence sections marked [INSUFFICIENT_EVIDENCE] and excluded by default with force_include override)
 - [x] **AI support letter generation** — auto-draft employer support letters, expert opinion letters from case data (SupportLetterService: 7 letter kinds — employer_support, expert_opinion, peer_recommendation, reference_letter, membership_attestation, critical_role, professor_endorsement; templated section assembly with case-specific fact substitution from intake + extracted documents; same [VERIFIED]/[PENDING_VERIFICATION]/[CITATION_NEEDED] discipline as petition letter)
@@ -437,7 +437,7 @@ Every verification step and safety check exists to protect everyone — attorney
 - [x] AI document analysis (OCR + validation) — DocumentIntakeService: classify (24 doc types), extract structured fields, quality + validation + expiry checks, extracted-vs-intake conflict detection
 - [x] Application strength scoring algorithm — IntakeEngineService.score_strength with explainable factor weights per visa type
 - [x] Attorney-applicant matching algorithm — AttorneyMatchService: 7-component scoring (specialization/country/language/capacity/red-flag handling/response time/approval rate) with reason chain
-- [ ] **AI legal research engine** — immigration case law, policy memos, AAO/BIA decisions
+- [x] **AI legal research engine** — immigration case law, policy memos, AAO/BIA decisions (LegalResearchService — see AI-powered legal research entry)
 - [ ] **AI document drafting engine** — cover letters, briefs, RFE responses, support letters
 - [ ] **Case outcome prediction model** — approval probability by visa type, service center, case characteristics
 - [ ] **Priority date forecasting model** — predict Visa Bulletin movement based on historical data
