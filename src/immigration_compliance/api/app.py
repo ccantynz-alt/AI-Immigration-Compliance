@@ -103,6 +103,7 @@ from immigration_compliance.services.onboarding_service import OnboardingService
 from immigration_compliance.services.document_intake_service import DocumentIntakeService
 from immigration_compliance.services.attorney_match_service import AttorneyMatchService
 from immigration_compliance.services.form_population_service import FormPopulationService
+from immigration_compliance.services.case_workspace_service import CaseWorkspaceService
 
 # Resolve frontend directory
 _root = Path(__file__).resolve().parent.parent.parent.parent
@@ -169,6 +170,14 @@ onboarding = OnboardingService()
 document_intake = DocumentIntakeService()
 attorney_match = AttorneyMatchService()
 form_population = FormPopulationService()
+case_workspace = CaseWorkspaceService(
+    intake_engine=intake_engine,
+    document_intake=document_intake,
+    form_population=form_population,
+    attorney_match=attorney_match,
+    conflict_check=conflict_check,
+    rfe_predictor=rfe_predictor,
+)
 
 # Gap Closers — competitive response features
 hris_deep = HRISDeepService()
@@ -324,6 +333,10 @@ def serve_document_collection() -> HTMLResponse:
 @app.get("/forms", response_class=HTMLResponse)
 def serve_forms_workspace() -> HTMLResponse:
     return _serve_html(_frontend_dir / "forms-workspace.html", "Forms workspace not found.")
+
+@app.get("/case", response_class=HTMLResponse)
+def serve_case_workspace() -> HTMLResponse:
+    return _serve_html(_frontend_dir / "case-workspace.html", "Case workspace not found.")
 
 @app.get("/health", response_model=HealthResponse)
 def health_check() -> HealthResponse:
@@ -2068,3 +2081,227 @@ def get_form_provenance(record_id: str, field_id: str | None = None, user: UserO
     if rec["applicant_id"] != user.id:
         raise HTTPException(status_code=403, detail="Access denied")
     return form_population.get_provenance(record_id=record_id, field_id=field_id)
+
+
+# =============================================
+# Case Workspace endpoints (unified system of record)
+# =============================================
+
+class WorkspaceCreateRequest(BaseModel):
+    visa_type: str
+    country: str
+    intake_session_id: str | None = None
+    case_label: str | None = None
+    attorney_id: str | None = None
+
+class WorkspaceStatusUpdate(BaseModel):
+    status: str
+    reason: str = ""
+
+class WorkspaceLinkFormRequest(BaseModel):
+    form_record_id: str
+
+class WorkspaceFilingRequest(BaseModel):
+    receipt_number: str
+    filed_date: str | None = None
+    form_type: str | None = None
+    auto_compute_deadlines: bool = True
+
+class WorkspaceNoteRequest(BaseModel):
+    body: str
+    visibility: str = "internal"
+
+class WorkspaceDeadlineRequest(BaseModel):
+    label: str
+    due_date: str
+    kind: str = "general"
+
+class WorkspaceAttorneyAssignRequest(BaseModel):
+    attorney_id: str
+    attorney_name: str = ""
+
+class WorkspaceTimelineEventRequest(BaseModel):
+    kind: str
+    message: str
+    metadata: dict | None = None
+
+class WorkspaceRFEReceivedRequest(BaseModel):
+    rfe_received_date: str
+    response_window_days: int = 87
+
+@app.post("/api/case-workspaces", status_code=201)
+def create_case_workspace(req: WorkspaceCreateRequest, user: UserOut = Depends(get_current_user)):
+    return case_workspace.create_workspace(
+        applicant_id=user.id,
+        visa_type=req.visa_type,
+        country=req.country,
+        intake_session_id=req.intake_session_id,
+        attorney_id=req.attorney_id,
+        case_label=req.case_label,
+    )
+
+@app.get("/api/case-workspaces")
+def list_case_workspaces(status: str | None = None, user: UserOut = Depends(get_current_user)):
+    if user.role == UserRole.ATTORNEY:
+        return case_workspace.list_workspaces(attorney_id=user.id, status=status)
+    return case_workspace.list_workspaces(applicant_id=user.id, status=status)
+
+@app.get("/api/case-workspaces/{ws_id}")
+def get_case_workspace(ws_id: str, user: UserOut = Depends(get_current_user)):
+    ws = case_workspace.get_workspace(ws_id)
+    if ws is None:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    if ws["applicant_id"] != user.id and ws.get("attorney_id") != user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    return ws
+
+@app.get("/api/case-workspaces/{ws_id}/snapshot")
+def get_case_workspace_snapshot(ws_id: str, user: UserOut = Depends(get_current_user)):
+    ws = case_workspace.get_workspace(ws_id)
+    if ws is None:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    if ws["applicant_id"] != user.id and ws.get("attorney_id") != user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    try:
+        return case_workspace.get_snapshot(ws_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
+@app.patch("/api/case-workspaces/{ws_id}/status")
+def update_case_workspace_status(ws_id: str, req: WorkspaceStatusUpdate, user: UserOut = Depends(get_current_user)):
+    ws = case_workspace.get_workspace(ws_id)
+    if ws is None:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    if ws["applicant_id"] != user.id and ws.get("attorney_id") != user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    try:
+        return case_workspace.update_status(ws_id, req.status, req.reason)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+@app.post("/api/case-workspaces/{ws_id}/forms")
+def link_workspace_form(ws_id: str, req: WorkspaceLinkFormRequest, user: UserOut = Depends(get_current_user)):
+    ws = case_workspace.get_workspace(ws_id)
+    if ws is None:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    if ws["applicant_id"] != user.id and ws.get("attorney_id") != user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    try:
+        return case_workspace.link_form_record(ws_id, req.form_record_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+@app.post("/api/case-workspaces/{ws_id}/attorney")
+def assign_workspace_attorney(ws_id: str, req: WorkspaceAttorneyAssignRequest, user: UserOut = Depends(get_current_user)):
+    ws = case_workspace.get_workspace(ws_id)
+    if ws is None:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    if ws["applicant_id"] != user.id:
+        raise HTTPException(status_code=403, detail="Only the applicant can assign the attorney")
+    try:
+        return case_workspace.assign_attorney(ws_id, req.attorney_id, req.attorney_name)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+@app.post("/api/case-workspaces/{ws_id}/filing")
+def record_workspace_filing(ws_id: str, req: WorkspaceFilingRequest, user: UserOut = Depends(get_current_user)):
+    ws = case_workspace.get_workspace(ws_id)
+    if ws is None:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    if ws.get("attorney_id") != user.id:
+        raise HTTPException(status_code=403, detail="Only the assigned attorney can record a filing")
+    try:
+        case_workspace.record_filing(ws_id, req.receipt_number, req.filed_date)
+        if req.auto_compute_deadlines and req.form_type and req.filed_date:
+            case_workspace.auto_compute_deadlines_from_filing(ws_id, req.filed_date, req.form_type)
+        return case_workspace.get_workspace(ws_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+@app.post("/api/case-workspaces/{ws_id}/notes")
+def add_workspace_note(ws_id: str, req: WorkspaceNoteRequest, user: UserOut = Depends(get_current_user)):
+    ws = case_workspace.get_workspace(ws_id)
+    if ws is None:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    if ws["applicant_id"] != user.id and ws.get("attorney_id") != user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    try:
+        return case_workspace.add_note(ws_id, user.id, req.body, req.visibility)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+@app.get("/api/case-workspaces/{ws_id}/notes")
+def list_workspace_notes(ws_id: str, visibility: str | None = None, user: UserOut = Depends(get_current_user)):
+    ws = case_workspace.get_workspace(ws_id)
+    if ws is None:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    if ws["applicant_id"] != user.id and ws.get("attorney_id") != user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    return case_workspace.list_notes(ws_id, visibility=visibility)
+
+@app.post("/api/case-workspaces/{ws_id}/deadlines")
+def add_workspace_deadline(ws_id: str, req: WorkspaceDeadlineRequest, user: UserOut = Depends(get_current_user)):
+    ws = case_workspace.get_workspace(ws_id)
+    if ws is None:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    if ws["applicant_id"] != user.id and ws.get("attorney_id") != user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    try:
+        return case_workspace.add_deadline(ws_id, req.label, req.due_date, kind=req.kind, source="manual")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+@app.post("/api/case-workspaces/{ws_id}/deadlines/{deadline_id}/complete")
+def complete_workspace_deadline(ws_id: str, deadline_id: str, user: UserOut = Depends(get_current_user)):
+    ws = case_workspace.get_workspace(ws_id)
+    if ws is None:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    if ws["applicant_id"] != user.id and ws.get("attorney_id") != user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    result = case_workspace.complete_deadline(ws_id, deadline_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Deadline not found")
+    return result
+
+@app.get("/api/case-workspaces/{ws_id}/deadlines")
+def list_workspace_deadlines(ws_id: str, include_completed: bool = False, user: UserOut = Depends(get_current_user)):
+    ws = case_workspace.get_workspace(ws_id)
+    if ws is None:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    if ws["applicant_id"] != user.id and ws.get("attorney_id") != user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    return case_workspace.list_deadlines(ws_id, include_completed=include_completed)
+
+@app.post("/api/case-workspaces/{ws_id}/timeline")
+def add_workspace_timeline_event(ws_id: str, req: WorkspaceTimelineEventRequest, user: UserOut = Depends(get_current_user)):
+    ws = case_workspace.get_workspace(ws_id)
+    if ws is None:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    if ws["applicant_id"] != user.id and ws.get("attorney_id") != user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    try:
+        return case_workspace.add_timeline_event(ws_id, req.kind, req.message, req.metadata)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+@app.get("/api/case-workspaces/{ws_id}/timeline")
+def get_workspace_timeline(ws_id: str, user: UserOut = Depends(get_current_user)):
+    ws = case_workspace.get_workspace(ws_id)
+    if ws is None:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    if ws["applicant_id"] != user.id and ws.get("attorney_id") != user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    return case_workspace.get_timeline(ws_id)
+
+@app.post("/api/case-workspaces/{ws_id}/rfe-received")
+def record_workspace_rfe(ws_id: str, req: WorkspaceRFEReceivedRequest, user: UserOut = Depends(get_current_user)):
+    ws = case_workspace.get_workspace(ws_id)
+    if ws is None:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    if ws.get("attorney_id") != user.id and ws["applicant_id"] != user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    try:
+        case_workspace.update_status(ws_id, "rfe", "RFE received")
+        return case_workspace.add_rfe_response_deadline(ws_id, req.rfe_received_date, req.response_window_days)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e

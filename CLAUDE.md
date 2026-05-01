@@ -186,11 +186,11 @@ The pitch: "9 hours/week of manual admin work eliminated. $230K/year in recovere
 - [x] **Conditional logic questionnaires** — questions adapt based on previous answers, visa type, and immigration status (rules-based engine with eligibility validation, document conditional inclusion, and red-flag detection)
 
 **Case Management**
-- [ ] Case dashboard — all cases, statuses, next actions in one view
+- [x] Case dashboard — all cases, statuses, next actions in one view (CaseWorkspaceService + /case page: unified system of record aggregating intake, documents, forms, attorney match, conflict checks, RFE risk, deadlines, notes, timeline; single `/api/case-workspaces/{id}/snapshot` returns the full state)
 - [ ] Document management (organize, tag, version control per case)
-- [ ] Case notes and internal memos
-- [ ] Case timeline/history view
-- [ ] **RFE tracking and response tools** — track RFE deadlines, draft responses with AI assistance
+- [x] Case notes and internal memos (CaseWorkspaceService.add_note with internal/client_visible visibility)
+- [x] Case timeline/history view (CaseWorkspaceService timeline records 17 event kinds — case_created, intake_started/completed, document_uploaded, forms_populated, attorney_assigned, conflict_check_run, rfe_risk_assessed, case_filed, rfe_received/responded, decision_received, deadline_added, note_added, status_changed, milestone_reached)
+- [x] **RFE tracking and response tools** — track RFE deadlines, draft responses with AI assistance (CaseWorkspaceService.add_rfe_response_deadline auto-computes 87-day response window from receipt date; AI response drafting still pending)
 - [ ] **AI RFE response builder** — ML-powered: summarize RFE notice, match evidence, draft response with citations
 - [x] **Form auto-fill engine** — enter client data once, populate across all required forms (I-130, I-485, I-765, I-131, etc.) (FormPopulationService.populate_bundle)
 - [x] **Bi-directional form sync** — change data in a form, it updates the client profile; change the profile, all forms update automatically (PATCH /api/forms/records/{id}/fields with provenance log + manual_overridden flag; re-running populate from a session re-pulls latest source values)
